@@ -107,3 +107,23 @@ Thumbs.db
 # Changeset
 .changeset
 
+# PNPM
+.pnpm-debug.log*
+.pnpm-store/
+
+# Test artifacts
+test-results/
+playwright-report/
+coverage/
+
+# Build artifacts
+*.tsbuildinfo
+.eslintcache
+
+# Kiro IDE
+.kiro/cache/
+.kiro/logs/
+
+# macOS
+.
+

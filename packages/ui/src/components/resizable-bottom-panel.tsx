@@ -38,16 +38,20 @@ export const ResizableBottomPanel: React.FC<ResizableBottomPanelProps> = ({
   }, [height]);
 
   const handleMouseMove = useCallback((e: MouseEvent) => {
-    if (!isResizing || !panelRef.current) return;
+    if (!isResizing) return;
 
+    e.preventDefault();
     const deltaY = startYRef.current - e.clientY; // 向上拖拽增加高度
     const newHeight = Math.max(minHeight, Math.min(maxHeight, startHeightRef.current + deltaY));
     
-    setHeight(newHeight);
-    onResize?.(newHeight);
-  }, [isResizing, minHeight, maxHeight, onResize]);
+    if (newHeight !== height) {
+      setHeight(newHeight);
+      onResize?.(newHeight);
+    }
+  }, [isResizing, minHeight, maxHeight, onResize, height]);
 
-  const handleMouseUp = useCallback(() => {
+  const handleMouseUp = useCallback((e: MouseEvent) => {
+    e.preventDefault();
     setIsResizing(false);
   }, []);
 
@@ -67,15 +71,21 @@ export const ResizableBottomPanel: React.FC<ResizableBottomPanelProps> = ({
 
   React.useEffect(() => {
     if (isResizing) {
-      document.addEventListener('mousemove', handleMouseMove);
-      document.addEventListener('mouseup', handleMouseUp);
+      document.addEventListener('mousemove', handleMouseMove, { passive: false });
+      document.addEventListener('mouseup', handleMouseUp, { passive: false });
       document.body.style.cursor = 'row-resize';
       document.body.style.userSelect = 'none';
+      document.body.style.pointerEvents = 'none';
+      
+      // 防止页面滚动
+      document.body.style.overflow = 'hidden';
     } else {
       document.removeEventListener('mousemove', handleMouseMove);
       document.removeEventListener('mouseup', handleMouseUp);
       document.body.style.cursor = '';
       document.body.style.userSelect = '';
+      document.body.style.pointerEvents = '';
+      document.body.style.overflow = '';
     }
 
     return () => {
@@ -83,6 +93,8 @@ export const ResizableBottomPanel: React.FC<ResizableBottomPanelProps> = ({
       document.removeEventListener('mouseup', handleMouseUp);
       document.body.style.cursor = '';
       document.body.style.userSelect = '';
+      document.body.style.pointerEvents = '';
+      document.body.style.overflow = '';
     };
   }, [isResizing, handleMouseMove, handleMouseUp]);
 
@@ -102,15 +114,23 @@ export const ResizableBottomPanel: React.FC<ResizableBottomPanelProps> = ({
 
   return (
     <div className="flex flex-col">
-      {/* 拖拽手柄 */}
+      {/* 拖拽手柄 - 增加高度以提高可用性 */}
       <div
         className={cn(
-          "h-1 cursor-row-resize transition-colors flex items-center justify-center",
-          isResizing ? "bg-blue-500" : "bg-transparent hover:bg-blue-400"
+          "h-2 cursor-row-resize transition-colors flex items-center justify-center relative group",
+          isResizing ? "bg-blue-500/20" : "bg-transparent hover:bg-blue-400/20"
         )}
         onMouseDown={handleMouseDown}
+        title="拖动调整面板高度"
       >
-        <div className="w-8 h-0.5 bg-border rounded" />
+        {/* 视觉指示器 */}
+        <div className={cn(
+          "w-12 h-1 rounded-full transition-colors",
+          isResizing ? "bg-blue-500" : "bg-border group-hover:bg-blue-400"
+        )} />
+        
+        {/* 扩展点击区域 */}
+        <div className="absolute inset-x-0 -top-1 -bottom-1" />
       </div>
 
       {/* 面板内容 */}

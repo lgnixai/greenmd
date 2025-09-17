@@ -236,6 +236,7 @@ export interface StorageAdapter {
 export interface SessionData {
   tabs: Record<string, Tab>;
   panes: Record<string, EditorPane>;
+  tabGroups: Record<string, TabGroup>;
   layout: EditorLayout;
   activePane: string;
   timestamp: number;

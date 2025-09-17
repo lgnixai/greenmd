@@ -8,7 +8,7 @@ export class StorageManager {
   private static readonly SESSION_KEY = 'obsidian-editor-session';
   private static readonly AUTO_SAVE_KEY = 'obsidian-editor-autosave';
   private static readonly BACKUP_KEY = 'obsidian-editor-backup';
-  private static readonly VERSION = '1.0.0';
+  private static readonly VERSION = '1.1.0';
   
   private autoSaveTimer: NodeJS.Timeout | null = null;
   private autoSaveDelay: number = 2000; // 2秒延迟自动保存
@@ -21,6 +21,7 @@ export class StorageManager {
       const sessionData: SessionData = {
         tabs: this.serializeTabs(state.tabs),
         panes: state.panes,
+        tabGroups: state.tabGroups || {},
         layout: state.layout,
         activePane: state.activePane,
         timestamp: Date.now(),
@@ -68,6 +69,7 @@ export class StorageManager {
       return {
         tabs: deserializedTabs,
         panes: parsed.panes,
+        tabGroups: parsed.tabGroups || {},
         layout: parsed.layout,
         activePane: parsed.activePane
       };
@@ -309,6 +311,7 @@ export class StorageManager {
       return {
         tabs: this.deserializeTabs(latestBackup.tabs),
         panes: latestBackup.panes,
+        tabGroups: latestBackup.tabGroups || {},
         layout: latestBackup.layout,
         activePane: latestBackup.activePane
       };
@@ -364,6 +367,7 @@ export class StorageManager {
       
       const migratedTabs: Record<string, Tab> = {};
       const migratedPanes: Record<string, EditorPane> = {};
+      const migratedTabGroups: EditorState['tabGroups'] = {};
       
       // 迁移标签页数据
       Object.entries(sessionData.tabs || {}).forEach(([id, tab]) => {
@@ -400,9 +404,23 @@ export class StorageManager {
         }
       });
       
+      // 迁移标签组数据（1.1.0 新增）
+      Object.entries((sessionData as any).tabGroups || {}).forEach(([id, group]) => {
+        if (group && typeof group === 'object' && (group as any).id) {
+          migratedTabGroups[id] = {
+            id: (group as any).id,
+            name: (group as any).name || '',
+            color: (group as any).color || '#999999',
+            tabs: Array.isArray((group as any).tabs) ? (group as any).tabs : [],
+            createdAt: new Date((group as any).createdAt || Date.now())
+          } as any;
+        }
+      });
+      
       return {
         tabs: migratedTabs,
         panes: migratedPanes,
+        tabGroups: migratedTabGroups,
         layout: sessionData.layout || { type: 'single', panes: [], splitters: [], activePane: '' },
         activePane: sessionData.activePane || ''
       };

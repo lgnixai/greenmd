@@ -13,6 +13,10 @@ export interface Tab {
   lineEnding?: 'LF' | 'CRLF';
   createdAt: Date;
   modifiedAt: Date;
+  // Advanced features
+  groupId?: string;
+  relatedTabs?: string[];
+  color?: string;
 }
 
 export interface EditorPane {
@@ -54,11 +58,28 @@ export interface EditorSettings {
   showLineNumbers: boolean;
   autoSave: boolean;
   autoSaveDelay: number;
+  // 响应式设计设置
+  responsive: {
+    autoMergePanes: boolean;
+    adaptiveTabWidth: boolean;
+    touchOptimized: boolean;
+    mobileBreakpoint: number;
+    tabletBreakpoint: number;
+  };
+}
+
+export interface TabGroup {
+  id: string;
+  name: string;
+  color: string;
+  tabs: string[];
+  createdAt: Date;
 }
 
 export interface EditorState {
   panes: Record<string, EditorPane>;
   tabs: Record<string, Tab>;
+  tabGroups: Record<string, TabGroup>;
   layout: EditorLayout;
   recentFiles: string[];
   settings: EditorSettings;
@@ -90,7 +111,14 @@ export type TabAction =
   | 'splitHorizontal'
   | 'splitVertical'
   | 'duplicate'
-  | 'rename';
+  | 'rename'
+  | 'newTab'
+  | 'addToGroup'
+  | 'removeFromGroup'
+  | 'createGroup'
+  | 'showRelated'
+  | 'linkTabs'
+  | 'unlinkTabs';
 
 export interface FileError {
   type: 'read' | 'write' | 'permission' | 'notFound';
@@ -98,10 +126,15 @@ export interface FileError {
   filePath: string;
 }
 
-export interface StateError {
-  type: 'corruption' | 'version' | 'storage';
-  message: string;
-  recoverable: boolean;
+export class StateError extends Error {
+  constructor(
+    public type: 'corruption' | 'version' | 'storage',
+    message: string,
+    public recoverable: boolean
+  ) {
+    super(message);
+    this.name = 'StateError';
+  }
 }
 
 // 事件类型定义
@@ -157,6 +190,9 @@ export interface TabProps {
   onDragStart: (e: React.DragEvent) => void;
   onDragEnd: (e: React.DragEvent) => void;
   draggable?: boolean;
+  style?: React.CSSProperties;
+  responsive?: any;
+  touchSizes?: any;
 }
 
 export interface FileEditorProps {

@@ -50,7 +50,14 @@ export const createDefaultSettings = (): EditorSettings => {
     wordWrap: true,
     showLineNumbers: true,
     autoSave: true,
-    autoSaveDelay: 2000
+    autoSaveDelay: 2000,
+    responsive: {
+      autoMergePanes: true,
+      adaptiveTabWidth: true,
+      touchOptimized: true,
+      mobileBreakpoint: 768,
+      tabletBreakpoint: 1024
+    }
   };
 };
 

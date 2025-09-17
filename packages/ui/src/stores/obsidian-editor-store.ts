@@ -5,13 +5,15 @@ import {
   EditorState, 
   Tab, 
   EditorPane, 
-  TabAction, 
-  DragState,
   EditorSettings,
-  EditorLayout,
-  PaneSplitter
+  PaneSplitter,
+  StateError,
+  TabGroup
 } from '../types/obsidian-editor';
 import { generateId, createDefaultTab, createDefaultPane, createDefaultSettings } from '../utils/obsidian-editor-utils';
+import { storageManager } from '../utils/storage-manager';
+import { sessionRecoveryService } from '../utils/session-recovery';
+import { autoSaveService } from '../utils/auto-save-service';
 
 interface EditorActions {
   // Tab 操作
@@ -22,6 +24,7 @@ interface EditorActions {
   moveTab: (tabId: string, fromPane: string, toPane: string, index?: number) => void;
   duplicateTab: (tabId: string) => string;
   lockTab: (tabId: string, locked: boolean) => void;
+  reorderTab: (tabId: string, paneId: string, newIndex: number) => void;
   
   // Pane 操作
   createPane: (options?: Partial<EditorPane>) => string;
@@ -30,6 +33,11 @@ interface EditorActions {
   splitPane: (paneId: string, direction: 'horizontal' | 'vertical') => string;
   splitPaneWithTab: (tabId: string, direction: 'horizontal' | 'vertical') => string;
   resizePane: (paneId: string, width: number, height: number) => void;
+  mergePanes: (paneAId: string, paneBId: string) => void;
+  canMergePanes: (paneAId: string, paneBId: string) => boolean;
+  getPaneMinSize: () => { width: number; height: number };
+  validatePaneSize: (paneId: string, width: number, height: number) => boolean;
+  autoMergePanes: () => void;
   
   // 布局操作
   createSplit: (paneAId: string, paneBId: string, direction: 'horizontal' | 'vertical') => string;
@@ -49,10 +57,34 @@ interface EditorActions {
   // 设置操作
   updateSettings: (settings: Partial<EditorSettings>) => void;
   
-  // 会话操作
-  saveSession: () => void;
-  loadSession: () => void;
-  clearSession: () => void;
+  // 持久化操作
+  saveSession: () => Promise<void>;
+  loadSession: () => Promise<void>;
+  clearSession: () => Promise<void>;
+  recoverSession: () => Promise<{ recovered: boolean; errors: StateError[]; warnings: string[] }>;
+  
+  // 自动保存操作
+  enableAutoSave: () => void;
+  disableAutoSave: () => void;
+  triggerAutoSave: (tabId: string) => void;
+  saveImmediately: (tabId: string) => Promise<boolean>;
+  recoverAutoSavedContent: (tabId: string) => Promise<{ content: string | null; timestamp: number | null; hasRecovery: boolean }>;
+  
+  // Tab Groups 操作
+  createTabGroup: (name: string, color: string, tabIds?: string[]) => string;
+  deleteTabGroup: (groupId: string) => void;
+  addTabToGroup: (tabId: string, groupId: string) => void;
+  removeTabFromGroup: (tabId: string) => void;
+  updateTabGroup: (groupId: string, updates: Partial<TabGroup>) => void;
+  
+  // Related Tabs 操作
+  linkTabs: (tabId1: string, tabId2: string) => void;
+  unlinkTabs: (tabId1: string, tabId2: string) => void;
+  getRelatedTabs: (tabId: string) => Tab[];
+  findRelatedFiles: (filePath: string) => string[];
+  
+  // Advanced Tab 操作
+  moveTabToNewWindow: (tabId: string) => void;
   
   // 工具方法
   getActiveTab: () => Tab | undefined;
@@ -60,6 +92,8 @@ interface EditorActions {
   getTabsByPane: (paneId: string) => Tab[];
   getPaneById: (paneId: string) => EditorPane | undefined;
   getTabById: (tabId: string) => Tab | undefined;
+  getTabGroupById: (groupId: string) => TabGroup | undefined;
+  getTabsByGroup: (groupId: string) => Tab[];
 }
 
 type EditorStore = EditorState & EditorActions;
@@ -67,6 +101,7 @@ type EditorStore = EditorState & EditorActions;
 const initialState: EditorState = {
   panes: {},
   tabs: {},
+  tabGroups: {},
   layout: {
     type: 'single',
     panes: [],
@@ -188,9 +223,14 @@ export const useObsidianEditorStore = create<EditorStore>()(
             Object.assign(tab, updates);
             tab.modifiedAt = new Date();
             
-            // 如果内容发生变化，标记为脏数据
+            // 如果内容发生变化，标记为脏数据并触发自动保存
             if ('content' in updates) {
               tab.isDirty = true;
+              
+              // 触发自动保存
+              if (state.settings.autoSave) {
+                autoSaveService.triggerAutoSave(tab, state.settings);
+              }
             }
           }
         });
@@ -203,24 +243,45 @@ export const useObsidianEditorStore = create<EditorStore>()(
           
           if (!fromPaneObj || !toPaneObj) return;
           
-          // 从源面板移除
-          const tabIndex = fromPaneObj.tabs.indexOf(tabId);
-          if (tabIndex > -1) {
-            fromPaneObj.tabs.splice(tabIndex, 1);
+          // 如果是同一个面板内的重排序
+          if (fromPane === toPane) {
+            const currentIndex = fromPaneObj.tabs.indexOf(tabId);
+            if (currentIndex === -1) return;
             
-            // 如果移除的是活动标签页，更新活动标签页
-            if (fromPaneObj.activeTab === tabId) {
-              fromPaneObj.activeTab = fromPaneObj.tabs[0] || '';
+            const targetIndex = index !== undefined ? index : fromPaneObj.tabs.length - 1;
+            
+            // 如果位置没有变化，直接返回
+            if (currentIndex === targetIndex) return;
+            
+            // 移除标签页
+            const [movedTab] = fromPaneObj.tabs.splice(currentIndex, 1);
+            
+            // 计算新的插入位置（考虑移除后的索引变化）
+            const newIndex = targetIndex > currentIndex ? targetIndex - 1 : targetIndex;
+            
+            // 插入到新位置
+            fromPaneObj.tabs.splice(newIndex, 0, movedTab);
+          } else {
+            // 跨面板移动
+            // 从源面板移除
+            const tabIndex = fromPaneObj.tabs.indexOf(tabId);
+            if (tabIndex > -1) {
+              fromPaneObj.tabs.splice(tabIndex, 1);
+              
+              // 如果移除的是活动标签页，更新活动标签页
+              if (fromPaneObj.activeTab === tabId) {
+                fromPaneObj.activeTab = fromPaneObj.tabs[0] || '';
+              }
             }
+            
+            // 添加到目标面板
+            const insertIndex = index !== undefined ? index : toPaneObj.tabs.length;
+            toPaneObj.tabs.splice(insertIndex, 0, tabId);
+            toPaneObj.activeTab = tabId;
+            
+            // 激活目标面板
+            state.activePane = toPane;
           }
-          
-          // 添加到目标面板
-          const insertIndex = index !== undefined ? index : toPaneObj.tabs.length;
-          toPaneObj.tabs.splice(insertIndex, 0, tabId);
-          toPaneObj.activeTab = tabId;
-          
-          // 激活目标面板
-          state.activePane = toPane;
         });
       },
 
@@ -247,6 +308,25 @@ export const useObsidianEditorStore = create<EditorStore>()(
         });
       },
 
+      reorderTab: (tabId, paneId, newIndex) => {
+        set((state) => {
+          const pane = state.panes[paneId];
+          if (!pane) return;
+          
+          const currentIndex = pane.tabs.indexOf(tabId);
+          if (currentIndex === -1 || currentIndex === newIndex) return;
+          
+          // 移除标签页
+          const [movedTab] = pane.tabs.splice(currentIndex, 1);
+          
+          // 计算实际插入位置
+          const insertIndex = newIndex > currentIndex ? newIndex - 1 : newIndex;
+          
+          // 插入到新位置
+          pane.tabs.splice(insertIndex, 0, movedTab);
+        });
+      },
+
       // Pane 操作
       createPane: (options = {}) => {
         const paneId = generateId();
@@ -269,10 +349,39 @@ export const useObsidianEditorStore = create<EditorStore>()(
           const pane = state.panes[paneId];
           if (!pane) return;
           
-          // 关闭面板中的所有标签页
-          pane.tabs.forEach(tabId => {
-            delete state.tabs[tabId];
-          });
+          // 如果面板有标签页，尝试将它们移动到相邻面板
+          if (pane.tabs.length > 0) {
+            // 找到相邻的面板
+            const adjacentSplitter = state.layout.splitters.find(
+              s => s.paneA === paneId || s.paneB === paneId
+            );
+            
+            if (adjacentSplitter) {
+              const targetPaneId = adjacentSplitter.paneA === paneId 
+                ? adjacentSplitter.paneB 
+                : adjacentSplitter.paneA;
+              
+              const targetPane = state.panes[targetPaneId];
+              if (targetPane) {
+                // 移动所有标签页到目标面板
+                pane.tabs.forEach(tabId => {
+                  if (!targetPane.tabs.includes(tabId)) {
+                    targetPane.tabs.push(tabId);
+                  }
+                });
+                
+                // 如果当前面板有活动标签页，将其设为目标面板的活动标签页
+                if (pane.activeTab && state.tabs[pane.activeTab]) {
+                  targetPane.activeTab = pane.activeTab;
+                }
+              }
+            } else {
+              // 没有相邻面板，删除所有标签页
+              pane.tabs.forEach(tabId => {
+                delete state.tabs[tabId];
+              });
+            }
+          }
           
           // 删除面板
           delete state.panes[paneId];
@@ -288,6 +397,11 @@ export const useObsidianEditorStore = create<EditorStore>()(
           state.layout.splitters = state.layout.splitters.filter(
             s => s.paneA !== paneId && s.paneB !== paneId
           );
+          
+          // 如果没有分割器了，切换到单面板模式
+          if (state.layout.splitters.length === 0) {
+            state.layout.type = 'single';
+          }
         });
       },
 
@@ -351,9 +465,105 @@ export const useObsidianEditorStore = create<EditorStore>()(
         set((state) => {
           const pane = state.panes[paneId];
           if (pane) {
-            pane.position.width = width;
-            pane.position.height = height;
+            const minSize = get().getPaneMinSize();
+            pane.position.width = Math.max(minSize.width, width);
+            pane.position.height = Math.max(minSize.height, height);
           }
+        });
+      },
+
+      mergePanes: (paneAId, paneBId) => {
+        set((state) => {
+          const paneA = state.panes[paneAId];
+          const paneB = state.panes[paneBId];
+          
+          if (!paneA || !paneB) return;
+          
+          // 将 paneB 的所有标签页移动到 paneA
+          paneB.tabs.forEach(tabId => {
+            if (!paneA.tabs.includes(tabId)) {
+              paneA.tabs.push(tabId);
+            }
+          });
+          
+          // 如果 paneB 有活动标签页，将其设为 paneA 的活动标签页
+          if (paneB.activeTab && state.tabs[paneB.activeTab]) {
+            paneA.activeTab = paneB.activeTab;
+          }
+          
+          // 删除 paneB
+          delete state.panes[paneBId];
+          state.layout.panes = state.layout.panes.filter(p => p.id !== paneBId);
+          
+          // 移除相关的分割器
+          state.layout.splitters = state.layout.splitters.filter(
+            s => s.paneA !== paneBId && s.paneB !== paneBId
+          );
+          
+          // 如果删除的是活动面板，切换到合并后的面板
+          if (state.activePane === paneBId) {
+            state.activePane = paneAId;
+          }
+          
+          // 如果没有分割器了，切换到单面板模式
+          if (state.layout.splitters.length === 0) {
+            state.layout.type = 'single';
+          }
+        });
+      },
+
+      canMergePanes: (paneAId, paneBId) => {
+        const state = get();
+        const paneA = state.panes[paneAId];
+        const paneB = state.panes[paneBId];
+        
+        if (!paneA || !paneB) return false;
+        
+        // 检查是否有分割器连接这两个面板
+        const hasDirectSplitter = state.layout.splitters.some(
+          s => (s.paneA === paneAId && s.paneB === paneBId) ||
+               (s.paneA === paneBId && s.paneB === paneAId)
+        );
+        
+        return hasDirectSplitter;
+      },
+
+      getPaneMinSize: () => {
+        return { width: 200, height: 150 };
+      },
+
+      validatePaneSize: (paneId, width, height) => {
+        const minSize = get().getPaneMinSize();
+        return width >= minSize.width && height >= minSize.height;
+      },
+
+      autoMergePanes: () => {
+        set((state) => {
+          const minSize = get().getPaneMinSize();
+          const panesToMerge: Array<{ small: string; target: string }> = [];
+          
+          // 检查所有面板的大小
+          Object.values(state.panes).forEach(pane => {
+            if (pane.position.width < minSize.width || pane.position.height < minSize.height) {
+              // 找到相邻的面板进行合并
+              const adjacentSplitter = state.layout.splitters.find(
+                s => s.paneA === pane.id || s.paneB === pane.id
+              );
+              
+              if (adjacentSplitter) {
+                const targetPaneId = adjacentSplitter.paneA === pane.id 
+                  ? adjacentSplitter.paneB 
+                  : adjacentSplitter.paneA;
+                
+                panesToMerge.push({ small: pane.id, target: targetPaneId });
+              }
+            }
+          });
+          
+          // 执行合并
+          panesToMerge.forEach(({ small, target }) => {
+            get().mergePanes(target, small);
+          });
         });
       },
 
@@ -390,9 +600,41 @@ export const useObsidianEditorStore = create<EditorStore>()(
       resizeSplit: (splitterId, position) => {
         set((state) => {
           const splitter = state.layout.splitters.find(s => s.id === splitterId);
-          if (splitter) {
-            splitter.position = Math.max(0.1, Math.min(0.9, position));
+          if (!splitter) return;
+          
+          const minSize = get().getPaneMinSize();
+          const minRatio = 0.15; // 最小比例 15%
+          const maxRatio = 0.85; // 最大比例 85%
+          
+          // 限制分割位置在合理范围内
+          const newPosition = Math.max(minRatio, Math.min(maxRatio, position));
+          
+          // 检查分割后的面板是否满足最小尺寸要求
+          const paneA = state.panes[splitter.paneA];
+          const paneB = state.panes[splitter.paneB];
+          
+          if (paneA && paneB) {
+            // 计算分割后的尺寸（这里简化处理，实际应该根据容器尺寸计算）
+            const isHorizontal = splitter.direction === 'horizontal';
+            const containerSize = isHorizontal ? 600 : 800; // 假设的容器尺寸
+            
+            const sizeA = containerSize * newPosition;
+            const sizeB = containerSize * (1 - newPosition);
+            
+            const minSizeValue = isHorizontal ? minSize.height : minSize.width;
+            
+            // 如果任一面板小于最小尺寸，触发自动合并
+            if (sizeA < minSizeValue || sizeB < minSizeValue) {
+              // 合并到较大的面板
+              const targetPane = sizeA > sizeB ? splitter.paneA : splitter.paneB;
+              const sourcePane = sizeA > sizeB ? splitter.paneB : splitter.paneA;
+              
+              get().mergePanes(targetPane, sourcePane);
+              return;
+            }
           }
+          
+          splitter.position = newPosition;
         });
       },
 
@@ -447,6 +689,9 @@ export const useObsidianEditorStore = create<EditorStore>()(
         if (!tab || !tab.filePath) return;
         
         try {
+          // 立即保存到自动保存系统
+          await autoSaveService.saveImmediately(tab);
+          
           // 这里应该调用实际的文件保存 API
           // await fileSystem.writeFile(tab.filePath, tab.content);
           
@@ -464,15 +709,26 @@ export const useObsidianEditorStore = create<EditorStore>()(
       },
 
       saveAllFiles: async () => {
-        const dirtyTabs = Object.values(get().tabs).filter(tab => tab.isDirty);
+        const state = get();
+        const result = await autoSaveService.saveAll(state.tabs);
         
-        for (const tab of dirtyTabs) {
-          try {
-            await get().saveFile(tab.id);
-          } catch (error) {
-            console.error(`Failed to save file ${tab.filePath}:`, error);
-          }
+        // 更新成功保存的标签页状态
+        set((state) => {
+          result.saved.forEach(tabId => {
+            const tab = state.tabs[tabId];
+            if (tab) {
+              tab.isDirty = false;
+              tab.modifiedAt = new Date();
+            }
+          });
+        });
+        
+        // 如果有失败的保存，记录错误
+        if (result.failed.length > 0) {
+          console.error(`Failed to save ${result.failed.length} files:`, result.failed);
         }
+        
+        return result;
       },
 
       // 设置操作
@@ -482,53 +738,126 @@ export const useObsidianEditorStore = create<EditorStore>()(
         });
       },
 
-      // 会话操作
-      saveSession: () => {
-        const state = get();
-        const sessionData = {
-          tabs: state.tabs,
-          panes: state.panes,
-          layout: state.layout,
-          activePane: state.activePane,
-          recentFiles: state.recentFiles,
-          settings: state.settings,
-          timestamp: Date.now(),
-          version: '1.0.0'
-        };
-        
+      // 持久化操作
+      saveSession: async () => {
         try {
-          localStorage.setItem('obsidian-editor-session', JSON.stringify(sessionData));
+          const state = get();
+          await storageManager.saveSession(state);
         } catch (error) {
           console.error('Failed to save session:', error);
+          throw error;
         }
       },
 
-      loadSession: () => {
+      loadSession: async () => {
         try {
-          const sessionData = localStorage.getItem('obsidian-editor-session');
-          if (sessionData) {
-            const parsed = JSON.parse(sessionData);
-            
+          const sessionState = await storageManager.loadSession();
+          if (sessionState) {
             set((state) => {
-              state.tabs = parsed.tabs || {};
-              state.panes = parsed.panes || {};
-              state.layout = parsed.layout || state.layout;
-              state.activePane = parsed.activePane || '';
-              state.recentFiles = parsed.recentFiles || [];
-              state.settings = { ...state.settings, ...parsed.settings };
+              if (sessionState.tabs) state.tabs = sessionState.tabs;
+              if (sessionState.panes) state.panes = sessionState.panes;
+              if (sessionState.tabGroups) state.tabGroups = sessionState.tabGroups;
+              if (sessionState.layout) state.layout = sessionState.layout;
+              if (sessionState.activePane) state.activePane = sessionState.activePane;
+              if (sessionState.recentFiles) state.recentFiles = sessionState.recentFiles;
+              if (sessionState.settings) state.settings = { ...state.settings, ...sessionState.settings };
             });
           }
         } catch (error) {
           console.error('Failed to load session:', error);
+          throw error;
         }
       },
 
-      clearSession: () => {
+      clearSession: async () => {
         try {
-          localStorage.removeItem('obsidian-editor-session');
+          await storageManager.clearSession();
+          
+          // 重置为初始状态
+          set((state) => {
+            Object.assign(state, initialState);
+          });
         } catch (error) {
           console.error('Failed to clear session:', error);
+          throw error;
         }
+      },
+
+      recoverSession: async () => {
+        try {
+          const recoveryResult = await sessionRecoveryService.recoverSession();
+          
+          if (recoveryResult.state) {
+            set((state) => {
+              if (recoveryResult.state.tabs) state.tabs = recoveryResult.state.tabs;
+              if (recoveryResult.state.panes) state.panes = recoveryResult.state.panes;
+              if (recoveryResult.state.tabGroups) state.tabGroups = recoveryResult.state.tabGroups;
+              if (recoveryResult.state.layout) state.layout = recoveryResult.state.layout;
+              if (recoveryResult.state.activePane) state.activePane = recoveryResult.state.activePane;
+              if (recoveryResult.state.recentFiles) state.recentFiles = recoveryResult.state.recentFiles;
+              if (recoveryResult.state.settings) state.settings = { ...state.settings, ...recoveryResult.state.settings };
+            });
+          }
+          
+          return {
+            recovered: recoveryResult.recovered,
+            errors: recoveryResult.errors,
+            warnings: recoveryResult.warnings
+          };
+        } catch (error) {
+          console.error('Failed to recover session:', error);
+          return {
+            recovered: false,
+            errors: [error instanceof StateError ? error : new StateError('corruption', 'Session recovery failed', false)],
+            warnings: []
+          };
+        }
+      },
+
+      // 自动保存操作
+      enableAutoSave: () => {
+        autoSaveService.enable();
+        set((state) => {
+          state.settings.autoSave = true;
+        });
+      },
+
+      disableAutoSave: () => {
+        autoSaveService.disable();
+        set((state) => {
+          state.settings.autoSave = false;
+        });
+      },
+
+      triggerAutoSave: (tabId) => {
+        const state = get();
+        const tab = state.tabs[tabId];
+        if (tab) {
+          autoSaveService.triggerAutoSave(tab, state.settings);
+        }
+      },
+
+      saveImmediately: async (tabId) => {
+        const state = get();
+        const tab = state.tabs[tabId];
+        if (tab) {
+          const success = await autoSaveService.saveImmediately(tab);
+          if (success) {
+            set((state) => {
+              const currentTab = state.tabs[tabId];
+              if (currentTab) {
+                currentTab.isDirty = false;
+                currentTab.modifiedAt = new Date();
+              }
+            });
+          }
+          return success;
+        }
+        return false;
+      },
+
+      recoverAutoSavedContent: async (tabId) => {
+        return await autoSaveService.recoverAutoSavedContent(tabId);
       },
 
       // 工具方法
@@ -560,28 +889,356 @@ export const useObsidianEditorStore = create<EditorStore>()(
 
       getTabById: (tabId) => {
         return get().tabs[tabId];
+      },
+
+      // Tab Groups 操作
+      createTabGroup: (name, color, tabIds = []) => {
+        const groupId = generateId();
+        const group: TabGroup = {
+          id: groupId,
+          name,
+          color,
+          tabs: [...tabIds],
+          createdAt: new Date()
+        };
+        
+        set((state) => {
+          state.tabGroups[groupId] = group;
+          
+          // 将标签页添加到组中
+          tabIds.forEach(tabId => {
+            const tab = state.tabs[tabId];
+            if (tab) {
+              tab.groupId = groupId;
+              tab.color = color;
+            }
+          });
+        });
+        
+        return groupId;
+      },
+
+      deleteTabGroup: (groupId) => {
+        set((state) => {
+          const group = state.tabGroups[groupId];
+          if (!group) return;
+          
+          // 从组中移除所有标签页
+          group.tabs.forEach(tabId => {
+            const tab = state.tabs[tabId];
+            if (tab) {
+              delete tab.groupId;
+              delete tab.color;
+            }
+          });
+          
+          delete state.tabGroups[groupId];
+        });
+      },
+
+      addTabToGroup: (tabId, groupId) => {
+        set((state) => {
+          const tab = state.tabs[tabId];
+          const group = state.tabGroups[groupId];
+          
+          if (!tab || !group) return;
+          
+          // 如果标签页已经在其他组中，先移除
+          if (tab.groupId && tab.groupId !== groupId) {
+            const oldGroup = state.tabGroups[tab.groupId];
+            if (oldGroup) {
+              oldGroup.tabs = oldGroup.tabs.filter(id => id !== tabId);
+            }
+          }
+          
+          // 添加到新组
+          tab.groupId = groupId;
+          tab.color = group.color;
+          
+          if (!group.tabs.includes(tabId)) {
+            group.tabs.push(tabId);
+          }
+        });
+      },
+
+      removeTabFromGroup: (tabId) => {
+        set((state) => {
+          const tab = state.tabs[tabId];
+          if (!tab || !tab.groupId) return;
+          
+          const group = state.tabGroups[tab.groupId];
+          if (group) {
+            group.tabs = group.tabs.filter(id => id !== tabId);
+          }
+          
+          delete tab.groupId;
+          delete tab.color;
+        });
+      },
+
+      updateTabGroup: (groupId, updates) => {
+        set((state) => {
+          const group = state.tabGroups[groupId];
+          if (!group) return;
+          
+          Object.assign(group, updates);
+          
+          // 如果颜色改变了，更新组内所有标签页的颜色
+          if (updates.color) {
+            group.tabs.forEach(tabId => {
+              const tab = state.tabs[tabId];
+              if (tab) {
+                tab.color = updates.color;
+              }
+            });
+          }
+        });
+      },
+
+      // Related Tabs 操作
+      linkTabs: (tabId1, tabId2) => {
+        set((state) => {
+          const tab1 = state.tabs[tabId1];
+          const tab2 = state.tabs[tabId2];
+          
+          if (!tab1 || !tab2) return;
+          
+          // 初始化关联标签页数组
+          if (!tab1.relatedTabs) tab1.relatedTabs = [];
+          if (!tab2.relatedTabs) tab2.relatedTabs = [];
+          
+          // 双向关联
+          if (!tab1.relatedTabs.includes(tabId2)) {
+            tab1.relatedTabs.push(tabId2);
+          }
+          if (!tab2.relatedTabs.includes(tabId1)) {
+            tab2.relatedTabs.push(tabId1);
+          }
+        });
+      },
+
+      unlinkTabs: (tabId1, tabId2) => {
+        set((state) => {
+          const tab1 = state.tabs[tabId1];
+          const tab2 = state.tabs[tabId2];
+          
+          if (!tab1 || !tab2) return;
+          
+          // 移除双向关联
+          if (tab1.relatedTabs) {
+            tab1.relatedTabs = tab1.relatedTabs.filter(id => id !== tabId2);
+          }
+          if (tab2.relatedTabs) {
+            tab2.relatedTabs = tab2.relatedTabs.filter(id => id !== tabId1);
+          }
+        });
+      },
+
+      getRelatedTabs: (tabId) => {
+        const state = get();
+        const tab = state.tabs[tabId];
+        
+        if (!tab || !tab.relatedTabs) return [];
+        
+        return tab.relatedTabs
+          .map(id => state.tabs[id])
+          .filter(Boolean);
+      },
+
+      findRelatedFiles: (filePath) => {
+        const state = get();
+        const relatedFiles: string[] = [];
+        
+        if (!filePath) return relatedFiles;
+        
+        const fileName = filePath.split('/').pop()?.split('.')[0];
+        const fileExt = filePath.split('.').pop();
+        const dirPath = filePath.substring(0, filePath.lastIndexOf('/'));
+        
+        // 查找相关文件的策略
+        Object.values(state.tabs).forEach(tab => {
+          if (!tab.filePath || tab.filePath === filePath) return;
+          
+          const tabFileName = tab.filePath.split('/').pop()?.split('.')[0];
+          const tabFileExt = tab.filePath.split('.').pop();
+          const tabDirPath = tab.filePath.substring(0, tab.filePath.lastIndexOf('/'));
+          
+          // 同名不同扩展名的文件
+          if (fileName && tabFileName === fileName && tabFileExt !== fileExt) {
+            relatedFiles.push(tab.filePath);
+          }
+          // 同目录下的测试文件
+          else if (dirPath === tabDirPath && (
+            (fileName && tabFileName?.includes(fileName) && tabFileName.includes('test')) ||
+            (fileName && tabFileName?.includes(fileName) && tabFileName.includes('spec')) ||
+            (tabFileName && fileName?.includes(tabFileName) && fileName.includes('test')) ||
+            (tabFileName && fileName?.includes(tabFileName) && fileName.includes('spec'))
+          )) {
+            relatedFiles.push(tab.filePath);
+          }
+          // 相似命名的文件
+          else if (fileName && tabFileName && (
+            fileName.includes(tabFileName) || tabFileName.includes(fileName)
+          ) && Math.abs(fileName.length - tabFileName.length) <= 3) {
+            relatedFiles.push(tab.filePath);
+          }
+        });
+        
+        return relatedFiles;
+      },
+
+      // Advanced Tab 操作
+      moveTabToNewWindow: (tabId) => {
+        const state = get();
+        const tab = state.tabs[tabId];
+        
+        if (!tab) return;
+        
+        // 在实际应用中，这里会打开新窗口
+        // 目前只是模拟功能，显示通知
+        if (typeof window !== 'undefined') {
+          // 尝试打开新窗口
+          const newWindow = window.open('', '_blank', 'width=800,height=600');
+          
+          if (newWindow) {
+            // 在新窗口中显示标签页内容
+            newWindow.document.write(`
+              <!DOCTYPE html>
+              <html>
+                <head>
+                  <title>${tab.title}</title>
+                  <style>
+                    body { font-family: monospace; padding: 20px; }
+                    pre { white-space: pre-wrap; }
+                  </style>
+                </head>
+                <body>
+                  <h1>${tab.title}</h1>
+                  <pre>${tab.content}</pre>
+                </body>
+              </html>
+            `);
+            newWindow.document.close();
+            
+            // 从当前窗口关闭标签页
+            get().closeTab(tabId);
+          } else {
+            // 如果无法打开新窗口，显示提示
+            alert('无法打开新窗口，请检查浏览器设置');
+          }
+        }
+      },
+
+      getTabGroupById: (groupId) => {
+        return get().tabGroups[groupId];
+      },
+
+      getTabsByGroup: (groupId) => {
+        const state = get();
+        const group = state.tabGroups[groupId];
+        
+        if (!group) return [];
+        
+        return group.tabs
+          .map(tabId => state.tabs[tabId])
+          .filter(Boolean);
       }
     }))
   )
 );
 
-// 自动保存会话
+// 自动保存会话和初始化
 if (typeof window !== 'undefined') {
   let saveTimeout: NodeJS.Timeout;
   
+  // 订阅状态变化进行自动保存
   useObsidianEditorStore.subscribe(
-    (state) => ({ tabs: state.tabs, panes: state.panes, layout: state.layout }),
-    (state) => {
+    (state) => ({ tabs: state.tabs, panes: state.panes, tabGroups: state.tabGroups, layout: state.layout, settings: state.settings }),
+    (current, previous) => {
       // 清除之前的定时器
       if (saveTimeout) {
         clearTimeout(saveTimeout);
       }
       
       // 延迟保存，避免频繁写入
-      saveTimeout = setTimeout(() => {
-        const saveSession = useObsidianEditorStore.getState().saveSession;
-        saveSession();
+      saveTimeout = setTimeout(async () => {
+        try {
+          const saveSession = useObsidianEditorStore.getState().saveSession;
+          await saveSession();
+        } catch (error) {
+          console.error('Auto-save session failed:', error);
+        }
       }, 2000);
     }
   );
+
+  // 页面加载时尝试恢复会话
+  window.addEventListener('load', async () => {
+    try {
+      const recoverSession = useObsidianEditorStore.getState().recoverSession;
+      const result = await recoverSession();
+      
+      if (result.warnings.length > 0) {
+        console.warn('Session recovery warnings:', result.warnings);
+      }
+      
+      if (result.errors.length > 0) {
+        console.error('Session recovery errors:', result.errors);
+      }
+      
+      if (result.recovered) {
+        console.log('Session recovered successfully');
+      } else {
+        console.log('Started with default session');
+      }
+    } catch (error) {
+      console.error('Failed to recover session on load:', error);
+    }
+  });
+
+  // 页面卸载时保存会话
+  window.addEventListener('beforeunload', async (event) => {
+    try {
+      const state = useObsidianEditorStore.getState();
+      
+      // 检查是否有未保存的更改
+      const hasUnsavedChanges = Object.values(state.tabs).some(tab => tab.isDirty);
+      
+      if (hasUnsavedChanges) {
+        // 尝试快速保存
+        await state.saveAllFiles();
+        
+        // 显示确认对话框
+        event.preventDefault();
+        event.returnValue = 'You have unsaved changes. Are you sure you want to leave?';
+        return event.returnValue;
+      }
+      
+      // 保存会话
+      await state.saveSession();
+    } catch (error) {
+      console.error('Failed to save on page unload:', error);
+    }
+  });
+
+  // 页面失去焦点时保存
+  window.addEventListener('blur', async () => {
+    try {
+      const state = useObsidianEditorStore.getState();
+      if (state.settings.autoSave) {
+        await state.saveAllFiles();
+      }
+    } catch (error) {
+      console.error('Failed to save on blur:', error);
+    }
+  });
+
+  // 定期清理过期的自动保存数据
+  setInterval(async () => {
+    try {
+      await autoSaveService.cleanupExpiredAutoSaves();
+    } catch (error) {
+      console.error('Failed to cleanup expired auto-saves:', error);
+    }
+  }, 60 * 60 * 1000); // 每小时清理一次
 }

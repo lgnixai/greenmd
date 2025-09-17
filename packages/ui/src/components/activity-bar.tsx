@@ -124,7 +124,7 @@ const ActivityBarCore: React.FC<ActivityBarProps> = ({ className, iconMap }) => 
           // React组件可能是function或object（对于React.forwardRef等）
           if (typeof IconComponent === 'function' || 
               (typeof IconComponent === 'object' && IconComponent !== null && 
-               (IconComponent.$$typeof || IconComponent.render))) {
+               ((IconComponent as any).$$typeof || (IconComponent as any).render))) {
             validatedIconMap[key] = IconComponent;
           } else if (process.env.NODE_ENV === 'development') {
             console.warn(`[ActivityBar] Invalid icon component for key "${key}" in iconMap. Expected a React component, got: ${typeof IconComponent}`);
@@ -161,7 +161,7 @@ const ActivityBarCore: React.FC<ActivityBarProps> = ({ className, iconMap }) => 
       // React组件可能是function或object（对于React.forwardRef等）
       if (typeof IconComponent !== 'function' && 
           !(typeof IconComponent === 'object' && IconComponent !== null && 
-            (IconComponent.$$typeof || IconComponent.render))) {
+            ((IconComponent as any).$$typeof || (IconComponent as any).render))) {
         if (process.env.NODE_ENV === 'development') {
           console.error(`[ActivityBar] Invalid icon component for activity: "${activityId}". Expected a React component, got: ${typeof IconComponent}. Using default FileText icon.`);
         }

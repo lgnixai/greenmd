@@ -1,12 +1,17 @@
-import React, { useCallback, useRef } from 'react';
+import React, { useCallback, useRef, useState, useEffect } from 'react';
 import { cn } from '../../lib/utils';
-import { EditorPaneProps } from '../../types/obsidian-editor';
+import { EditorPaneProps, DragPosition } from '../../types/obsidian-editor';
 import { TabBar } from './tab-bar';
 import { FileEditor } from './file-editor';
 import { QuickActions } from './quick-actions';
+import { DropZoneHighlight } from './drag-drop-overlay';
+import { dragDropManager, DragDropState } from '../../utils/drag-drop-manager';
 import { useObsidianEditorStore } from '../../stores/obsidian-editor-store';
 
-export const EditorPane: React.FC<EditorPaneProps> = ({
+export const EditorPane: React.FC<EditorPaneProps & {
+  onPaneClose?: (paneId: string) => void;
+  canClose?: boolean;
+}> = ({
   pane,
   tabs,
   isActive,
@@ -14,18 +19,34 @@ export const EditorPane: React.FC<EditorPaneProps> = ({
   onTabClose,
   onTabMove,
   onSplit,
-  onPaneActivate
+  onPaneActivate,
+  onPaneClose,
+  canClose = true
 }) => {
   const paneRef = useRef<HTMLDivElement>(null);
+  const [dragState, setDragState] = useState<DragDropState>(dragDropManager.getState());
+  const [dropZoneType, setDropZoneType] = useState<'merge' | 'split-left' | 'split-right' | 'split-top' | 'split-bottom' | null>(null);
+  
   const {
     createTab,
     updateTab,
     duplicateTab,
     lockTab,
     splitPaneWithTab,
+    moveTab,
     settings,
     openFile
   } = useObsidianEditorStore();
+
+  // 监听拖拽状态变化
+  useEffect(() => {
+    const handleStateChange = (state: DragDropState) => {
+      setDragState(state);
+    };
+
+    dragDropManager.addListener(handleStateChange);
+    return () => dragDropManager.removeListener(handleStateChange);
+  }, []);
 
   // 获取当前活动的标签页
   const activeTab = tabs.find(tab => tab.id === pane.activeTab);
@@ -46,6 +67,10 @@ export const EditorPane: React.FC<EditorPaneProps> = ({
     if (!tab) return;
 
     switch (action) {
+      case 'newTab':
+        handleNewTab();
+        break;
+      
       case 'duplicate':
         const newTabId = duplicateTab(tabId);
         if (newTabId) {
@@ -77,20 +102,39 @@ export const EditorPane: React.FC<EditorPaneProps> = ({
         break;
       
       case 'moveToNewWindow':
-        // 这里可以实现移动到新窗口的逻辑
-        console.log('Move to new window:', tabId);
+        // 使用store的moveTabToNewWindow方法
+        const { moveTabToNewWindow } = useObsidianEditorStore.getState();
+        moveTabToNewWindow(tabId);
+        break;
+      
+      // 高级菜单功能 - 这些由Tab组件内部的对话框处理，这里不需要额外逻辑
+      case 'showRelated':
+      case 'addToGroup':
+      case 'removeFromGroup':
+      case 'createGroup':
+      case 'linkTabs':
+      case 'unlinkTabs':
+        // 这些操作由Tab组件的对话框处理，不需要在这里实现
         break;
       
       default:
         console.warn('Unknown tab action:', action);
     }
-  }, [tabs, duplicateTab, lockTab, updateTab, onSplit]);
+  }, [tabs, duplicateTab, lockTab, updateTab, onSplit, handleNewTab]);
 
   // 处理标签页拖拽
-  const handleTabDrag = useCallback((tabId: string, position: any) => {
-    // 这里可以实现更复杂的拖拽逻辑
-    console.log('Tab drag:', tabId, position);
-  }, []);
+  const handleTabDrag = useCallback((tabId: string, position: DragPosition) => {
+    if (position.zone === 'tab' && position.targetIndex !== undefined) {
+      // 在同一面板内重新排序
+      const currentIndex = tabs.findIndex(tab => tab.id === tabId);
+      if (currentIndex !== -1 && currentIndex !== position.targetIndex) {
+        // 这里需要实现标签页重排序逻辑
+        console.log('Reorder tab:', tabId, 'from', currentIndex, 'to', position.targetIndex);
+        // 可以通过store的moveTab方法实现
+        // moveTab(tabId, pane.id, pane.id, position.targetIndex);
+      }
+    }
+  }, [tabs, pane.id]);
 
   // 处理内容变化
   const handleContentChange = useCallback((content: string) => {
@@ -106,22 +150,113 @@ export const EditorPane: React.FC<EditorPaneProps> = ({
     }
   }, [isActive, onPaneActivate]);
 
+  // 处理面板关闭
+  const handlePaneClose = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (onPaneClose && canClose) {
+      onPaneClose(pane.id);
+    }
+  }, [onPaneClose, canClose, pane.id]);
+
   // 处理拖拽放置
   const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault();
     e.dataTransfer.dropEffect = 'move';
+    
+    // 只处理来自其他面板的拖拽
+    if (!dragState.isDragging || dragState.draggedFromPane === pane.id) {
+      return;
+    }
+    
+    const rect = paneRef.current?.getBoundingClientRect();
+    if (!rect) return;
+    
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    const threshold = 50;
+    
+    // 确定拖拽区域类型
+    let newDropZoneType: typeof dropZoneType = null;
+    
+    if (x < threshold) {
+      newDropZoneType = 'split-left';
+    } else if (x > rect.width - threshold) {
+      newDropZoneType = 'split-right';
+    } else if (y < threshold) {
+      newDropZoneType = 'split-top';
+    } else if (y > rect.height - threshold) {
+      newDropZoneType = 'split-bottom';
+    } else {
+      newDropZoneType = 'merge';
+    }
+    
+    setDropZoneType(newDropZoneType);
+    
+    // 更新拖拽管理器状态
+    const position: DragPosition = {
+      x: e.clientX,
+      y: e.clientY,
+      zone: newDropZoneType === 'merge' ? 'pane' : 
+            (newDropZoneType?.includes('left') || newDropZoneType?.includes('right')) ? 'split-vertical' : 'split-horizontal',
+      targetIndex: newDropZoneType?.includes('left') || newDropZoneType?.includes('top') ? 0 : -1
+    };
+    
+    dragDropManager.updateDrag(pane.id, position);
+  }, [dragState, pane.id, dropZoneType]);
+
+  const handleDragLeave = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    
+    // 检查是否真的离开了面板
+    const rect = paneRef.current?.getBoundingClientRect();
+    if (!rect) return;
+    
+    const { clientX, clientY } = e;
+    if (
+      clientX < rect.left ||
+      clientX > rect.right ||
+      clientY < rect.top ||
+      clientY > rect.bottom
+    ) {
+      setDropZoneType(null);
+      dragDropManager.updateDrag(null, null);
+    }
   }, []);
 
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
+    
     const draggedTabId = e.dataTransfer.getData('text/plain');
+    const sourcePane = e.dataTransfer.getData('application/source-pane');
+    
+    // 清除拖拽状态
+    setDropZoneType(null);
+    dragDropManager.updateDrag(null, null);
     
     // 如果是从其他面板拖拽过来的标签页
-    if (draggedTabId && !tabs.some(tab => tab.id === draggedTabId)) {
-      // 这里需要实现跨面板的标签页移动逻辑
-      console.log('Drop tab from another pane:', draggedTabId);
+    if (draggedTabId && sourcePane && sourcePane !== pane.id) {
+      switch (dropZoneType) {
+        case 'split-left':
+        case 'split-right':
+          splitPaneWithTab(draggedTabId, 'vertical');
+          break;
+        case 'split-top':
+        case 'split-bottom':
+          splitPaneWithTab(draggedTabId, 'horizontal');
+          break;
+        case 'merge':
+        default:
+          // 移动到当前面板
+          if (onTabMove) {
+            onTabMove(draggedTabId, pane.id);
+          } else {
+            // 直接使用store方法
+            moveTab(draggedTabId, sourcePane, pane.id);
+          }
+          break;
+      }
     }
-  }, [tabs]);
+  }, [pane.id, dropZoneType, splitPaneWithTab, onTabMove, moveTab]);
 
   // 快捷操作处理
   const handleQuickAction = useCallback((action: string, data?: any) => {
@@ -145,7 +280,6 @@ export const EditorPane: React.FC<EditorPaneProps> = ({
       
       case 'openRecent':
         if (data && typeof data === 'string') {
-          const fileName = data.split('/').pop() || 'Untitled';
           const tabId = openFile(data, '// 从最近文件打开\n');
           onTabSwitch(tabId);
         }
@@ -166,7 +300,9 @@ export const EditorPane: React.FC<EditorPaneProps> = ({
       )}
       onClick={handlePaneClick}
       onDragOver={handleDragOver}
+      onDragLeave={handleDragLeave}
       onDrop={handleDrop}
+      data-pane-id={pane.id}
     >
       {/* 标签栏 */}
       <TabBar
@@ -178,6 +314,8 @@ export const EditorPane: React.FC<EditorPaneProps> = ({
         onTabDrag={handleTabDrag}
         onNewTab={handleNewTab}
         onTabAction={handleTabAction}
+        onPaneClose={onPaneClose}
+        canClosePane={canClose}
       />
 
       {/* 内容区域 */}
@@ -208,6 +346,20 @@ export const EditorPane: React.FC<EditorPaneProps> = ({
       {/* 面板状态指示器 */}
       {isActive && (
         <div className="absolute top-0 left-0 w-full h-1 bg-primary" />
+      )}
+      
+      {/* 拖拽区域高亮 */}
+      {dragState.isDragging && dragState.draggedFromPane !== pane.id && dropZoneType && (
+        <DropZoneHighlight
+          isActive={true}
+          type={dropZoneType === 'merge' ? 'pane' : 'split'}
+          className={cn(
+            dropZoneType === 'split-left' && "right-1/2",
+            dropZoneType === 'split-right' && "left-1/2",
+            dropZoneType === 'split-top' && "bottom-1/2",
+            dropZoneType === 'split-bottom' && "top-1/2"
+          )}
+        />
       )}
     </div>
   );

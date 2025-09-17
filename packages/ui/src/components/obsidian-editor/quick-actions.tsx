@@ -1,9 +1,7 @@
 import React from 'react';
-import { cn } from '../../lib/utils';
 import { QuickActionsProps } from '../../types/obsidian-editor';
 import { FileText, FolderOpen, Clock, Keyboard, Zap } from 'lucide-react';
 import { Button } from '../button';
-import { formatTime } from '../../utils/obsidian-editor-utils';
 
 export const QuickActions: React.FC<QuickActionsProps> = ({
   onNewFile,

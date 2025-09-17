@@ -1,7 +1,9 @@
-import React, { useEffect, useRef, useState, useCallback } from 'react';
+import React, { useEffect, useRef, useState, useCallback, useMemo } from 'react';
 import { cn } from '../../lib/utils';
 import { FileEditorProps } from '../../types/obsidian-editor';
 import { debounce } from '../../utils/obsidian-editor-utils';
+import { chunkLoader, memoryManager, performanceMonitor } from '../../utils/performance-optimizer';
+import { ErrorBoundary } from '../error-boundary';
 
 // 简单的语法高亮器（基于正则表达式）
 const highlightSyntax = (code: string, language: string): string => {
@@ -142,6 +144,27 @@ export const FileEditor: React.FC<FileEditorProps> = ({
   const [content, setContent] = useState(tab.content);
   const [cursorPosition, setCursorPosition] = useState({ line: 1, column: 1 });
   const [selection, setSelection] = useState({ start: 0, end: 0 });
+  const [visibleRange, setVisibleRange] = useState({ start: 0, end: 100 });
+  const [isLargeFile, setIsLargeFile] = useState(false);
+  const [loadingChunks, setLoadingChunks] = useState(false);
+
+  // Large file threshold (1MB)
+  const LARGE_FILE_THRESHOLD = 1024 * 1024;
+
+  // Check if file is large and needs chunking
+  const isFileLarge = useMemo(() => {
+    return new Blob([tab.content]).size > LARGE_FILE_THRESHOLD;
+  }, [tab.content]);
+
+  useEffect(() => {
+    setIsLargeFile(isFileLarge);
+    if (isFileLarge) {
+      performanceMonitor.startMeasure('large-file-load');
+      // Cache content for large files
+      memoryManager.cacheTabContent(tab.id, tab.content);
+      performanceMonitor.endMeasure('large-file-load');
+    }
+  }, [isFileLarge, tab.id, tab.content]);
 
   // 防抖的内容更新
   const debouncedContentChange = useCallback(
@@ -273,13 +296,7 @@ export const FileEditor: React.FC<FileEditorProps> = ({
     }
   };
 
-  // 同步滚动
-  const handleScroll = (e: React.UIEvent<HTMLTextAreaElement>) => {
-    if (preRef.current) {
-      preRef.current.scrollTop = e.currentTarget.scrollTop;
-      preRef.current.scrollLeft = e.currentTarget.scrollLeft;
-    }
-  };
+
 
   // 获取行号
   const getLineNumbers = () => {
@@ -287,13 +304,55 @@ export const FileEditor: React.FC<FileEditorProps> = ({
     return lines.map((_, index) => index + 1);
   };
 
+  // Get visible content for large files
+  const getVisibleContent = useCallback(() => {
+    if (!isLargeFile) return content;
+    
+    const lines = content.split('\n');
+    const visibleLines = lines.slice(visibleRange.start, visibleRange.end);
+    return visibleLines.join('\n');
+  }, [content, isLargeFile, visibleRange]);
+
+  // Handle scroll for large files
+  const handleScroll = useCallback((e: React.UIEvent<HTMLTextAreaElement>) => {
+    const textarea = e.currentTarget;
+    
+    if (preRef.current) {
+      preRef.current.scrollTop = textarea.scrollTop;
+      preRef.current.scrollLeft = textarea.scrollLeft;
+    }
+
+    // Update visible range for large files
+    if (isLargeFile) {
+      const { scrollTop, clientHeight } = textarea;
+      const lineHeight = 24; // Approximate line height
+      const startLine = Math.floor(scrollTop / lineHeight);
+      const visibleLines = Math.ceil(clientHeight / lineHeight);
+      const buffer = 50; // Buffer lines above and below
+      
+      setVisibleRange({
+        start: Math.max(0, startLine - buffer),
+        end: Math.min(content.split('\n').length, startLine + visibleLines + buffer)
+      });
+    }
+  }, [isLargeFile, content]);
+
   // 语法高亮的内容
-  const highlightedContent = tab.language 
-    ? highlightSyntax(content, tab.language)
-    : content.replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  const highlightedContent = useMemo(() => {
+    performanceMonitor.startMeasure('syntax-highlight');
+    
+    const contentToHighlight = getVisibleContent();
+    const result = tab.language 
+      ? highlightSyntax(contentToHighlight, tab.language)
+      : contentToHighlight.replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    
+    performanceMonitor.endMeasure('syntax-highlight');
+    return result;
+  }, [tab.language, getVisibleContent]);
 
   return (
-    <div className="flex flex-col h-full bg-background">
+    <ErrorBoundary>
+      <div className="flex flex-col h-full bg-background">
       {/* 编辑器工具栏 */}
       <div className="flex items-center justify-between px-4 py-2 border-b border-border bg-muted/30">
         <div className="flex items-center gap-4 text-sm text-muted-foreground">
@@ -312,6 +371,16 @@ export const FileEditor: React.FC<FileEditorProps> = ({
         </div>
         
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
+          {isLargeFile && (
+            <span className="px-2 py-1 bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 rounded text-xs">
+              大文件
+            </span>
+          )}
+          {loadingChunks && (
+            <span className="px-2 py-1 bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-200 rounded text-xs">
+              加载中...
+            </span>
+          )}
           {readOnly && (
             <span className="px-2 py-1 bg-orange-100 dark:bg-orange-900 text-orange-800 dark:text-orange-200 rounded text-xs">
               只读
@@ -360,7 +429,7 @@ export const FileEditor: React.FC<FileEditorProps> = ({
             {/* 文本输入区 */}
             <textarea
               ref={textareaRef}
-              value={content}
+              value={isLargeFile ? getVisibleContent() : content}
               onChange={handleContentChange}
               onKeyDown={handleKeyDown}
               onScroll={handleScroll}
@@ -387,6 +456,7 @@ export const FileEditor: React.FC<FileEditorProps> = ({
         </div>
       </div>
     </div>
+    </ErrorBoundary>
   );
 };
 

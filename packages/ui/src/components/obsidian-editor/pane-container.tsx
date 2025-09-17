@@ -4,6 +4,7 @@ import { EditorPane as EditorPaneType, PaneSplitter } from '../../types/obsidian
 import { EditorPane } from './editor-pane';
 import { PaneSplitterComponent } from './pane-splitter';
 import { useObsidianEditorStore } from '../../stores/obsidian-editor-store';
+import { useResponsiveDesign, shouldAutoMergePanes, getOptimalPaneLayout } from '../../hooks/useResponsiveDesign';
 
 interface PaneContainerProps {
   className?: string;
@@ -19,17 +20,45 @@ export const PaneContainer: React.FC<PaneContainerProps> = ({ className }) => {
 
   const {
     panes,
-    tabs,
     layout,
     activePane,
+    settings,
     getTabsByPane,
     activatePane,
     switchTab,
     closeTab,
     moveTab,
     splitPane,
-    resizeSplit
+    resizeSplit,
+    closePane,
+    mergePanes,
+    canMergePanes,
+    getPaneMinSize,
+    validatePaneSize,
+    autoMergePanes
   } = useObsidianEditorStore();
+
+  // 响应式设计
+  const responsive = useResponsiveDesign({
+    mobile: settings.responsive.mobileBreakpoint,
+    tablet: settings.responsive.tabletBreakpoint
+  });
+
+  // 响应式自动合并面板
+  React.useEffect(() => {
+    if (!settings.responsive.autoMergePanes) return;
+
+    const container = containerRef.current;
+    if (!container) return;
+
+    const { width, height } = container.getBoundingClientRect();
+    const paneCount = Object.keys(panes).length;
+
+    if (shouldAutoMergePanes(width, height, paneCount, responsive.isMobile, responsive.isTablet)) {
+      // 自动合并面板
+      autoMergePanes();
+    }
+  }, [responsive.isMobile, responsive.isTablet, panes, settings.responsive.autoMergePanes, autoMergePanes]);
 
   // 处理面板激活
   const handlePaneActivate = useCallback((paneId: string) => {
@@ -46,13 +75,13 @@ export const PaneContainer: React.FC<PaneContainerProps> = ({ className }) => {
     closeTab(tabId);
   }, [closeTab]);
 
-  // 处理标签页移动
-  const handleTabMove = useCallback((tabId: string, fromPane: string, toPane: string) => {
-    moveTab(tabId, fromPane, toPane);
+  // 处理标签页移动 - 适配接口签名
+  const handleTabMoveForPane = useCallback((paneId: string) => (tabId: string, targetPane: string) => {
+    moveTab(tabId, paneId, targetPane);
   }, [moveTab]);
 
-  // 处理面板分割
-  const handlePaneSplit = useCallback((paneId: string, direction: 'horizontal' | 'vertical') => {
+  // 处理面板分割 - 适配接口签名
+  const handlePaneSplitForPane = useCallback((paneId: string) => (direction: 'horizontal' | 'vertical') => {
     splitPane(paneId, direction);
   }, [splitPane]);
 
@@ -93,12 +122,32 @@ export const PaneContainer: React.FC<PaneContainerProps> = ({ className }) => {
   // 处理分割器拖拽结束
   const handleSplitterDragEnd = useCallback(() => {
     setDragState(null);
-  }, []);
+    // 检查是否需要自动合并面板
+    autoMergePanes();
+  }, [autoMergePanes]);
+
+  // 处理面板关闭
+  const handlePaneClose = useCallback((paneId: string) => {
+    closePane(paneId);
+  }, [closePane]);
+
+  // 处理面板合并
+  const handlePaneMerge = useCallback((paneAId: string, paneBId: string) => {
+    if (canMergePanes(paneAId, paneBId)) {
+      mergePanes(paneAId, paneBId);
+    }
+  }, [mergePanes, canMergePanes]);
+
+  // 处理分割器双击（重置分割比例）
+  const handleSplitterDoubleClick = useCallback((splitterId: string) => {
+    resizeSplit(splitterId, 0.5);
+  }, [resizeSplit]);
 
   // 渲染单个面板
   const renderPane = useCallback((pane: EditorPaneType) => {
     const paneTabs = getTabsByPane(pane.id);
     const isActive = activePane === pane.id;
+    const canClose = Object.keys(panes).length > 1; // 只有多个面板时才能关闭
 
     return (
       <EditorPane
@@ -108,20 +157,82 @@ export const PaneContainer: React.FC<PaneContainerProps> = ({ className }) => {
         isActive={isActive}
         onTabSwitch={handleTabSwitch}
         onTabClose={handleTabClose}
-        onTabMove={handleTabMove}
-        onSplit={handlePaneSplit}
+        onTabMove={handleTabMoveForPane(pane.id)}
+        onSplit={handlePaneSplitForPane(pane.id)}
         onPaneActivate={() => handlePaneActivate(pane.id)}
+        onPaneClose={handlePaneClose}
+        canClose={canClose}
       />
     );
   }, [
     getTabsByPane,
     activePane,
+    panes,
     handleTabSwitch,
     handleTabClose,
-    handleTabMove,
-    handlePaneSplit,
-    handlePaneActivate
+    handleTabMoveForPane,
+    handlePaneSplitForPane,
+    handlePaneActivate,
+    handlePaneClose
   ]);
+
+  // 递归渲染分割布局节点
+  const renderSplitNode = useCallback((paneId: string, availableSplitters: PaneSplitter[]): React.ReactNode => {
+    // 查找以此面板为 paneA 的分割器
+    const splitter = availableSplitters.find(s => s.paneA === paneId);
+    
+    if (!splitter) {
+      // 没有分割器，直接渲染面板
+      const pane = panes[paneId];
+      return pane ? renderPane(pane) : null;
+    }
+
+    // 有分割器，递归渲染分割布局
+    const paneB = panes[splitter.paneB];
+    if (!paneB) return null;
+
+    const isHorizontal = splitter.direction === 'horizontal';
+    const position = splitter.position * 100;
+    
+    // 移除当前分割器，避免无限递归
+    const remainingSplitters = availableSplitters.filter(s => s.id !== splitter.id);
+
+    return (
+      <div className={cn(
+        "w-full h-full flex",
+        isHorizontal ? "flex-col" : "flex-row"
+      )}>
+        {/* 第一个面板或子分割 */}
+        <div
+          className="overflow-hidden"
+          style={{
+            [isHorizontal ? 'height' : 'width']: `${position}%`
+          }}
+        >
+          {renderSplitNode(splitter.paneA, remainingSplitters)}
+        </div>
+
+        {/* 分割器 */}
+        <PaneSplitterComponent
+          splitter={splitter}
+          onDragStart={handleSplitterDragStart}
+          onDrag={handleSplitterDrag}
+          onDragEnd={handleSplitterDragEnd}
+          onDoubleClick={() => handleSplitterDoubleClick(splitter.id)}
+        />
+
+        {/* 第二个面板或子分割 */}
+        <div
+          className="overflow-hidden"
+          style={{
+            [isHorizontal ? 'height' : 'width']: `${100 - position}%`
+          }}
+        >
+          {renderSplitNode(splitter.paneB, remainingSplitters)}
+        </div>
+      </div>
+    );
+  }, [panes, renderPane, handleSplitterDragStart, handleSplitterDrag, handleSplitterDragEnd]);
 
   // 渲染分割布局
   const renderSplitLayout = useCallback(() => {
@@ -137,59 +248,24 @@ export const PaneContainer: React.FC<PaneContainerProps> = ({ className }) => {
       );
     }
 
-    // 分割布局 - 这里实现一个简单的两面板分割
-    // 在实际应用中，可能需要更复杂的递归布局算法
-    const splitter = layout.splitters[0]; // 简化：只处理第一个分割器
-    const paneA = panes[splitter.paneA];
-    const paneB = panes[splitter.paneB];
+    // 复杂分割布局 - 支持多层嵌套
+    // 找到根面板（不作为任何分割器的 paneB 的面板）
+    const allPaneBIds = new Set(layout.splitters.map(s => s.paneB));
+    const rootPanes = Object.keys(panes).filter(paneId => !allPaneBIds.has(paneId));
+    
+    if (rootPanes.length === 0) {
+      // 如果没有根面板，使用第一个面板作为根
+      const firstPane = Object.keys(panes)[0];
+      return firstPane ? renderSplitNode(firstPane, layout.splitters) : null;
+    }
 
-    if (!paneA || !paneB) return null;
-
-    const isHorizontal = splitter.direction === 'horizontal';
-    const position = splitter.position * 100;
-
+    // 渲染第一个根面板的分割树
     return (
-      <div className={cn(
-        "w-full h-full flex",
-        isHorizontal ? "flex-col" : "flex-row"
-      )}>
-        {/* 第一个面板 */}
-        <div
-          className="overflow-hidden"
-          style={{
-            [isHorizontal ? 'height' : 'width']: `${position}%`
-          }}
-        >
-          {renderPane(paneA)}
-        </div>
-
-        {/* 分割器 */}
-        <PaneSplitterComponent
-          splitter={splitter}
-          onDragStart={handleSplitterDragStart}
-          onDrag={handleSplitterDrag}
-          onDragEnd={handleSplitterDragEnd}
-        />
-
-        {/* 第二个面板 */}
-        <div
-          className="overflow-hidden"
-          style={{
-            [isHorizontal ? 'height' : 'width']: `${100 - position}%`
-          }}
-        >
-          {renderPane(paneB)}
-        </div>
+      <div className="w-full h-full">
+        {renderSplitNode(rootPanes[0], layout.splitters)}
       </div>
     );
-  }, [
-    layout,
-    panes,
-    renderPane,
-    handleSplitterDragStart,
-    handleSplitterDrag,
-    handleSplitterDragEnd
-  ]);
+  }, [layout, panes, renderPane, renderSplitNode]);
 
   // 处理全局鼠标事件（用于分割器拖拽）
   React.useEffect(() => {
@@ -215,6 +291,33 @@ export const PaneContainer: React.FC<PaneContainerProps> = ({ className }) => {
       document.removeEventListener('mouseup', handleMouseUp);
     };
   }, [dragState, layout.splitters, handleSplitterDrag, handleSplitterDragEnd]);
+
+  // 响应式处理 - 监听容器大小变化
+  React.useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+
+    const resizeObserver = new ResizeObserver((entries) => {
+      const entry = entries[0];
+      if (!entry) return;
+
+      const { width, height } = entry.contentRect;
+      const minSize = getPaneMinSize();
+
+      // 如果容器太小，自动合并面板
+      if (width < minSize.width * 2 || height < minSize.height * 2) {
+        if (layout.type === 'split' && Object.keys(panes).length > 1) {
+          autoMergePanes();
+        }
+      }
+    });
+
+    resizeObserver.observe(container);
+
+    return () => {
+      resizeObserver.disconnect();
+    };
+  }, [layout.type, panes, getPaneMinSize, autoMergePanes]);
 
   return (
     <div

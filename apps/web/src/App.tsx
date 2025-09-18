@@ -1,7 +1,7 @@
-import { MoleculeProvider, Workbench, CommandPalette } from '@lginxai/greenmd-ui';
+import { MoleculeProvider, Workbench, CommandPalette } from '@dtinsight/molecule-ui';
 import { useEffect } from 'react';
-import { useCommandService } from '@lginxai/greenmd-core-legacy';
-import type { IMoleculeConfig } from '@lginxai/greenmd-types';
+import { useCommandService } from '@dtinsight/molecule-core-legacy';
+import type { IMoleculeConfig } from '@dtinsight/molecule-types';
 import './index.css';
 
 const config: IMoleculeConfig = {

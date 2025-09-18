@@ -1,6 +1,6 @@
 import React from 'react';
 import { cn } from "@/lib/utils";
-import { useMenuService, useI18nService, useLayoutStore, useThemeService } from '@lginxai/greenmd-core-legacy';
+import { useMenuService, useI18nService, useLayoutStore, useThemeService } from '@dtinsight/molecule-core-legacy';
 
 export interface MenuBarProps {
   className?: string;

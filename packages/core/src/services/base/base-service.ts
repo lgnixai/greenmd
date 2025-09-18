@@ -1,8 +1,8 @@
 // 基础服务类
 
-import type { IService, IEventEmitter, Disposable } from '@lginxai/greenmd-types';
+import type { IService, IEventEmitter, Disposable } from '@dtinsight/molecule-types';
 import { EventBus } from '../../foundation/events/event-bus';
-import { MoleculeError, ERROR_CODES } from '@lginxai/greenmd-shared';
+import { MoleculeError, ERROR_CODES } from '@dtinsight/molecule-shared';
 
 // 基础服务抽象类
 export abstract class BaseService implements IService {

@@ -6,7 +6,7 @@ import type {
   IService, 
   IConfiguration,
   Disposable 
-} from '@lginxai/greenmd-types';
+} from '@dtinsight/molecule-types';
 
 // 模拟事件发射器
 export class MockEventEmitter<T = any> implements IEventEmitter<T> {

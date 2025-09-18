@@ -2,7 +2,7 @@ import React from 'react';
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/button";
 import { Settings } from 'lucide-react';
-import { useLayoutStore } from '@lginxai/greenmd-core-legacy';
+import { useLayoutStore } from '@dtinsight/molecule-core-legacy';
 
 export interface AuxiliaryPaneProps {
   className?: string;

@@ -1,6 +1,6 @@
 import React from 'react';
 import { cn } from "@/lib/utils";
-import { useCommandService } from '@lginxai/greenmd-core-legacy';
+import { useCommandService } from '@dtinsight/molecule-core-legacy';
 
 export interface ContextMenuItem {
   id: string;

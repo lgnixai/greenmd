@@ -1,7 +1,7 @@
 import React from 'react';
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/button";
-import { useTestService, useThemeService } from '@lginxai/greenmd-core-legacy';
+import { useTestService, useThemeService } from '@dtinsight/molecule-core-legacy';
 import { Play, RotateCcw, CheckCircle, XCircle, Clock, Loader2 } from 'lucide-react';
 
 export interface TestPaneProps {

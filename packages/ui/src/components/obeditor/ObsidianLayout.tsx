@@ -9,14 +9,14 @@ import { Layout, Save } from 'lucide-react';
 import { useFileTree } from '@/stores/filetree';
 import useShortcuts from '@/hooks/useShortcuts';
 
-import type { PanelNode } from '@lginxai/greenmd-core-legacy';
+import type { PanelNode } from '@dtinsight/molecule-core-legacy';
 import {
   findNodeById as findNodeByIdCore,
   findFirstLeaf as findFirstLeafCore,
   updateTabsForPanel,
   splitPanelImmutable,
   removePanelNodeImmutable,
-} from '@lginxai/greenmd-core-legacy';
+} from '@dtinsight/molecule-core-legacy';
 
 // interface FileNode {
 //   id: string;

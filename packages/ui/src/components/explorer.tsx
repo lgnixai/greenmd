@@ -2,9 +2,9 @@ import React from 'react';
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/button";
 import { ChevronRight, ChevronDown, File, Folder, FolderOpen } from 'lucide-react';
-import type { IFileTreeNode } from '@lginxai/greenmd-types';
+import type { IFileTreeNode } from '@dtinsight/molecule-types';
 import { ContextMenu } from "@/components/context-menu";
-import { useEditorService } from '@lginxai/greenmd-core-legacy';
+import { useEditorService } from '@dtinsight/molecule-core-legacy';
 
 export interface ExplorerProps {
   className?: string;

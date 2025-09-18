@@ -1,5 +1,5 @@
 {
-  "name": "@lginxai/greenmd-core",
+  "name": "@dtinsight/molecule-core",
   "version": "3.0.0-alpha.0",
   "description": "Core business logic and services for Molecule 3.x",
   "main": "dist/index.js",

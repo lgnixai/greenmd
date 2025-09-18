@@ -1,5 +1,5 @@
 {
-  "name": "@lginxai/greenmd-web",
+  "name": "@dtinsight/molecule-web",
   "version": "3.0.0-alpha.0",
   "description": "Web application for Molecule IDE",
   "private": true,

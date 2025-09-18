@@ -1,5 +1,5 @@
 {
-  "name": "@lginxai/greenmd",
+  "name": "@dtinsight/molecule",
   "version": "3.0.0-alpha.0",
   "description": "A modern Web IDE UI Framework built with React.js and shadcn/ui, inspired by VSCode.",
   "private": true,
@@ -21,7 +21,7 @@
     "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,md}\"",
     "changeset": "changeset",
     "version-packages": "changeset version",
-    "release": "turbo run build --filter=!@lginxai/greenmd-docs && changeset publish"
+    "release": "turbo run build --filter=!@dtinsight/molecule-docs && changeset publish"
   },
   "devDependencies": {
     "@changesets/cli": "^2.27.1",

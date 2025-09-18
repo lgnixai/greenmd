@@ -1,6 +1,6 @@
 // 存储工具函数
 
-import type { IConfiguration } from '@lginxai/greenmd-types';
+import type { IConfiguration } from '@dtinsight/molecule-types';
 
 // 存储适配器接口
 export interface IStorageAdapter {

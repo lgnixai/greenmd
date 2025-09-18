@@ -1,7 +1,7 @@
 // 事件总线实现
 
-import type { IEventEmitter, IEvent, Disposable } from '@lginxai/greenmd-types';
-import { MoleculeError, ERROR_CODES } from '@lginxai/greenmd-shared';
+import type { IEventEmitter, IEvent, Disposable } from '@dtinsight/molecule-types';
+import { MoleculeError, ERROR_CODES } from '@dtinsight/molecule-shared';
 
 // 事件监听器类型
 export type EventListener<T = any> = (event: IEvent<T>) => void;

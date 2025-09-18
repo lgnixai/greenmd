@@ -15,7 +15,7 @@ const {
   TestTube,
   AlertTriangle
 } = LucideIcons;
-import { useLayoutStore } from '@lginxai/greenmd-core-legacy';
+import { useLayoutStore } from '@dtinsight/molecule-core-legacy';
 
 // Error Boundary for ActivityBar component
 class ActivityBarErrorBoundary extends React.Component<

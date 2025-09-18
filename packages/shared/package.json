@@ -1,5 +1,5 @@
 {
-  "name": "@lginxai/greenmd-shared",
+  "name": "@dtinsight/molecule-shared",
   "version": "3.0.0-alpha.0",
   "description": "Shared utilities and constants for Molecule 3.x",
   "main": "dist/index.js",

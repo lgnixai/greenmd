@@ -1,7 +1,7 @@
 // 依赖注入容器实现
 
-import type { IService, Disposable } from '@lginxai/greenmd-types';
-import { MoleculeError, ERROR_CODES } from '@lginxai/greenmd-shared';
+import type { IService, Disposable } from '@dtinsight/molecule-types';
+import { MoleculeError, ERROR_CODES } from '@dtinsight/molecule-shared';
 
 // 服务标识符类型
 export type ServiceIdentifier<T = any> = string | symbol | (new (...args: any[]) => T);

@@ -25,7 +25,9 @@
       "@dtinsight/molecule-ui": ["./packages/ui/src"],
       "@dtinsight/molecule-editor": ["./packages/editor/src"],
       "@dtinsight/molecule-extensions": ["./packages/extensions/src"],
-      "@dtinsight/molecule-themes": ["./packages/themes/src"]
+      "@dtinsight/molecule-themes": ["./packages/themes/src"],
+      "@dtinsight/molecule-types": ["./packages/types/src"],
+      "@dtinsight/molecule-shared": ["./packages/shared/src"]
     }
   },
   "include": [

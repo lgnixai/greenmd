@@ -21,6 +21,8 @@
       "@/*": ["./src/*"],
       "@dtinsight/molecule-core": ["../../packages/core/src"],
       "@dtinsight/molecule-ui": ["../../packages/ui/src"],
+      "@dtinsight/molecule-types": ["../../packages/types/src"],
+      "@dtinsight/molecule-shared": ["../../packages/shared/src"],
       "@/components/*": ["../../packages/ui/src/components/*"],
       "@/hooks/*": ["../../packages/ui/src/hooks/*"],
       "@/utils/*": ["../../packages/ui/src/utils/*"],

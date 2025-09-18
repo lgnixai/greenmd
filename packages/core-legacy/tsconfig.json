@@ -6,11 +6,10 @@
     "declaration": true,
     "declarationMap": true,
     "sourceMap": true,
-    "composite": true,
-    "incremental": false,
-    "tsBuildInfoFile": "./dist/.tsbuildinfo"
+    "composite": false,
+    "incremental": false
   },
-  "include": ["src/**/*", "src/types/index.ts", "src/stores/index.ts", "src/services/index.ts", "src/hooks/index.ts"],
+  "include": ["src/**/*"],
   "exclude": ["dist", "node_modules", "**/*.test.*", "**/*.spec.*"]
 }
 

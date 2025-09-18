@@ -21,7 +21,9 @@
     "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,md}\"",
     "changeset": "changeset",
     "version-packages": "changeset version",
-    "release": "turbo run build --filter=!@dtinsight/molecule-docs && changeset publish"
+    "release": "turbo run build --filter=!@dtinsight/molecule-docs && changeset publish",
+    "pre-pr-check": "./scripts/pre-pr-check.sh",
+    "build-deps": "pnpm build --filter=@dtinsight/molecule-types && pnpm build --filter=@dtinsight/molecule-shared && pnpm build --filter=@dtinsight/molecule-core-legacy && pnpm build --filter=@dtinsight/molecule-core"
   },
   "devDependencies": {
     "@changesets/cli": "^2.27.1",

@@ -3,9 +3,9 @@ import { defineConfig } from 'tsup'
 export default defineConfig({
   entry: ['src/index.ts'],
   format: ['cjs', 'esm'],
-  dts: false, // 暂时禁用 DTS 构建
+  dts: true, // Enable DTS generation for proper type declarations
   splitting: false,
-  sourcemap: false, // 暂时禁用 sourcemap 以避免构建问题
+  sourcemap: true, // Enable sourcemap for better debugging
   clean: true,
   external: ['react', 'react-dom'],
   treeshake: true,

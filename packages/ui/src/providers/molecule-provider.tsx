@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useMemo } from 'react';
-import { ExtensionService } from '@dtinsight/molecule-core-legacy';
-import type { IMoleculeConfig, IUseMoleculeReturn } from '@dtinsight/molecule-core';
+import { ExtensionService } from '@lginxai/luckin-core-legacy';
+import type { IMoleculeConfig, IUseMoleculeReturn } from '@lginxai/luckin-core';
 
 interface MoleculeProviderProps {
   config: IMoleculeConfig;

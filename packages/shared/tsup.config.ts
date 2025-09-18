@@ -7,5 +7,5 @@ export default defineConfig({
   splitting: false,
   sourcemap: true,
   clean: true,
-  external: ['@dtinsight/molecule-types']
+  external: ['@lginxai/luckin-types']
 })

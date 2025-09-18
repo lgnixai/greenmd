@@ -21,14 +21,14 @@
     "baseUrl": ".",
     "paths": {
       "@/*": ["./src/*"],
-      "@lginxai/greenmd-core": ["./packages/core/src"],
-      "@lginxai/greenmd-ui": ["./packages/ui/src"],
-      "@lginxai/greenmd-editor": ["./packages/editor/src"],
-      "@lginxai/greenmd-extensions": ["./packages/extensions/src"],
-      "@lginxai/greenmd-themes": ["./packages/themes/src"],
-      "@lginxai/greenmd-types": ["./packages/types/src"],
-      "@lginxai/greenmd-shared": ["./packages/shared/src"],
-      "@lginxai/greenmd-core-legacy": ["./packages/core-legacy/src"]
+      "@lginxai/luckin-core": ["./packages/core/src"],
+      "@lginxai/luckin-ui": ["./packages/ui/src"],
+      "@lginxai/luckin-editor": ["./packages/editor/src"],
+      "@lginxai/luckin-extensions": ["./packages/extensions/src"],
+      "@lginxai/luckin-themes": ["./packages/themes/src"],
+      "@lginxai/luckin-types": ["./packages/types/src"],
+      "@lginxai/luckin-shared": ["./packages/shared/src"],
+      "@lginxai/luckin-core-legacy": ["./packages/core-legacy/src"]
     }
   },
   "include": [

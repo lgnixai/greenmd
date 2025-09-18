@@ -8,9 +8,9 @@ export default defineConfig({
   sourcemap: true,
   clean: true,
   external: [
-    '@dtinsight/molecule-types',
-    '@dtinsight/molecule-shared',
-    '@dtinsight/molecule-core-legacy',
+    '@lginxai/luckin-types',
+    '@lginxai/luckin-shared',
+    '@lginxai/luckin-core-legacy',
     'zustand',
     'immer'
   ]

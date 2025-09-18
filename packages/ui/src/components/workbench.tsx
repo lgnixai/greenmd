@@ -1,6 +1,6 @@
 import React from 'react';
 import { cn } from '@/lib/utils';
-import { useLayoutStore } from '@dtinsight/molecule-core-legacy';
+import { useLayoutStore } from '@lginxai/luckin-core-legacy';
 import { ActivityBar } from '@/components/activity-bar';
 import { Sidebar } from '@/components/sidebar';
 //import { ObsidianEditor } from '@/components/obsidian-editor/obsidian-editor';

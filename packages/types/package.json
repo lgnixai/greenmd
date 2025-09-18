@@ -1,5 +1,5 @@
 {
-  "name": "@dtinsight/molecule-types",
+  "name": "@lginxai/luckin-types",
   "version": "3.0.0-alpha.0",
   "description": "Unified type definitions for Molecule 3.x",
   "main": "dist/index.js",

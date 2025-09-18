@@ -1,7 +1,7 @@
-import { MoleculeProvider, Workbench, CommandPalette } from '@dtinsight/molecule-ui';
+import { MoleculeProvider, Workbench, CommandPalette } from '@lginxai/luckin-ui';
 import { useEffect } from 'react';
-import { useCommandService } from '@dtinsight/molecule-core-legacy';
-import type { IMoleculeConfig } from '@dtinsight/molecule-core';
+import { useCommandService } from '@lginxai/luckin-core-legacy';
+import type { IMoleculeConfig } from '@lginxai/luckin-core';
 import './index.css';
 
 const config: IMoleculeConfig = {

@@ -1,5 +1,5 @@
 {
-  "name": "@dtinsight/molecule-shared",
+  "name": "@lginxai/luckin-shared",
   "version": "3.0.0-alpha.0",
   "description": "Shared utilities and constants for Molecule 3.x",
   "main": "dist/index.js",
@@ -15,7 +15,7 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {
-    "@lginxai/greenmd-types": "workspace:*"
+    "@lginxai/luckin-types": "workspace:*"
   },
   "devDependencies": {
     "tsup": "^8.0.0",

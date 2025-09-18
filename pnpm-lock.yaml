@@ -32,10 +32,10 @@ importers:
 
   apps/web:
     dependencies:
-      '@dtinsight/molecule-core':
+      '@lginxai/luckin-core':
         specifier: workspace:*
         version: link:../../packages/core
-      '@dtinsight/molecule-ui':
+      '@lginxai/luckin-ui':
         specifier: workspace:*
         version: link:../../packages/ui
       clsx:
@@ -96,13 +96,13 @@ importers:
 
   packages/core:
     dependencies:
-      '@dtinsight/molecule-core-legacy':
+      '@lginxai/luckin-core-legacy':
         specifier: workspace:*
         version: link:../core-legacy
-      '@dtinsight/molecule-shared':
+      '@lginxai/luckin-shared':
         specifier: workspace:*
         version: link:../shared
-      '@dtinsight/molecule-types':
+      '@lginxai/luckin-types':
         specifier: workspace:*
         version: link:../types
       immer:
@@ -158,7 +158,7 @@ importers:
 
   packages/shared:
     dependencies:
-      '@dtinsight/molecule-types':
+      '@lginxai/luckin-types':
         specifier: workspace:*
         version: link:../types
     devDependencies:
@@ -196,9 +196,6 @@ importers:
       '@dnd-kit/utilities':
         specifier: ^3.2.2
         version: 3.2.2(react@18.3.1)
-      '@dtinsight/molecule-core':
-        specifier: workspace:*
-        version: link:../core
       '@lexical/code':
         specifier: ^0.35.0
         version: 0.35.0
@@ -226,6 +223,15 @@ importers:
       '@lexical/utils':
         specifier: ^0.35.0
         version: 0.35.0
+      '@lginxai/luckin-core':
+        specifier: workspace:*
+        version: link:../core
+      '@lginxai/luckin-core-legacy':
+        specifier: workspace:*
+        version: link:../core-legacy
+      '@lginxai/luckin-types':
+        specifier: workspace:*
+        version: link:../types
       '@monaco-editor/react':
         specifier: ^4.7.0
         version: 4.7.0(monaco-editor@0.53.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)

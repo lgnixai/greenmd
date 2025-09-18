@@ -3,7 +3,7 @@ import { cn } from "@/lib/utils";
 import { Input } from "@/components/input";
 import { Button } from "@/components/button";
 import { Checkbox } from "@/components/checkbox";
-import { useSearchService } from '@dtinsight/molecule-core-legacy';
+import { useSearchService } from '@lginxai/luckin-core-legacy';
 
 export interface SearchViewProps {
   className?: string;

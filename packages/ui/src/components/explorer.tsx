@@ -2,16 +2,16 @@ import React from 'react';
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/button";
 import { ChevronRight, ChevronDown, File, Folder, FolderOpen } from 'lucide-react';
-import type { IFileTreeNode } from '@dtinsight/molecule-types';
+import type { ITreeNode } from '@lginxai/luckin-types';
 import { ContextMenu } from "@/components/context-menu";
-import { useEditorService } from '@dtinsight/molecule-core-legacy';
+import { useEditorService } from '@lginxai/luckin-core-legacy';
 
 export interface ExplorerProps {
   className?: string;
 }
 
 interface TreeNodeProps {
-  node: IFileTreeNode;
+  node: ITreeNode;
   level: number;
   expanded: boolean;
   onToggle: (nodeId: string) => void;
@@ -111,7 +111,7 @@ export const Explorer: React.FC<ExplorerProps> = ({ className }) => {
   const { openFile } = useEditorService();
 
   // Mock data for now
-  const mockData: IFileTreeNode[] = [
+  const mockData: ITreeNode[] = [
     {
       id: '1',
       name: 'src',
@@ -160,11 +160,11 @@ export const Explorer: React.FC<ExplorerProps> = ({ className }) => {
     });
   };
 
-  const findNodeById = (nodes: IFileTreeNode[], id: string): IFileTreeNode | undefined => {
+  const findNodeById = (nodes: ITreeNode[], id: string): ITreeNode | undefined => {
     for (const n of nodes) {
       if (n.id.toString() === id) return n;
       if (n.children) {
-        const found = findNodeById(n.children as IFileTreeNode[], id);
+        const found = findNodeById(n.children as ITreeNode[], id);
         if (found) return found;
       }
     }

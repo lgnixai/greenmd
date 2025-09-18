@@ -7,7 +7,13 @@ export default defineConfig({
   splitting: false,
   sourcemap: false, // 暂时禁用 sourcemap 以避免构建问题
   clean: true,
-  external: ['react', 'react-dom'],
+  external: [
+    'react', 
+    'react-dom',
+    '@lginxai/luckin-core-legacy',
+    '@lginxai/luckin-core',
+    '@lginxai/luckin-types'
+  ],
   treeshake: true,
 })
 

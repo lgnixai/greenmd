@@ -1,19 +1,19 @@
 {
-  "name": "@dtinsight/molecule-web",
+  "name": "@lginxai/luckin-web",
   "version": "3.0.0-alpha.0",
   "description": "Web application for Molecule IDE",
   "private": true,
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc && vite build",
+    "build": "vite build",
     "preview": "vite preview",
     "type-check": "tsc --noEmit",
     "lint": "eslint src --ext .ts,.tsx"
   },
   "dependencies": {
-    "@dtinsight/molecule-core": "workspace:*",
-    "@dtinsight/molecule-ui": "workspace:*",
+    "@lginxai/luckin-core": "workspace:*",
+    "@lginxai/luckin-ui": "workspace:*",
     "zustand": "^4.4.7",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",

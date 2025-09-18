@@ -16,12 +16,16 @@ export default defineConfig({
         replacement: path.resolve(__dirname, './src'),
       },
       {
-        find: '@dtinsight/molecule-core',
+        find: '@lginxai/luckin-core',
         replacement: path.resolve(__dirname, '../../packages/core/src'),
       },
       {
-        find: '@dtinsight/molecule-ui',
+        find: '@lginxai/luckin-ui',
         replacement: path.resolve(__dirname, '../../packages/ui/src'),
+      },
+      {
+        find: '@lginxai/luckin-core-legacy',
+        replacement: path.resolve(__dirname, '../../packages/core-legacy/src'),
       },
     ],
   },

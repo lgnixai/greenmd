@@ -1,4 +1,5 @@
-import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
+import { create } from 'zustand';
+import { immer } from 'zustand/middleware/immer';
 
 export interface Tab {
   id: string;
@@ -66,7 +67,7 @@ interface TabManagerState {
   };
 }
 
-interface TabManagerContextValue extends TabManagerState {
+interface TabManagerActions extends TabManagerState {
   // Tab Group Management
   createTabGroup: (name: string, color: string, tabIds: string[]) => string;
   updateTabGroup: (groupId: string, updates: Partial<TabGroup>) => void;
@@ -104,7 +105,7 @@ interface TabManagerContextValue extends TabManagerState {
   getGroupColors: () => string[];
 }
 
-const TabManagerContext = createContext<TabManagerContextValue | null>(null);
+type TabManagerStore = TabManagerActions;
 
 const DEFAULT_SETTINGS: TabManagerState['settings'] = {
   maxVisibleTabs: 8,
@@ -125,437 +126,277 @@ const DEFAULT_GROUP_COLORS = [
   '#84cc16', // lime
 ];
 
-export const TabManagerProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [state, setState] = useState<TabManagerState>({
+const STORAGE_KEY = 'obsidian.clone.tabManager';
+
+const loadInitialState = (): TabManagerState => {
+  if (typeof window === 'undefined') {
+    return {
+      tabGroups: {},
+      tabStacks: {},
+      workspaceLayouts: {},
+      navigationHistories: {},
+      shortcuts: {},
+      settings: DEFAULT_SETTINGS,
+    };
+  }
+  try {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if (saved) {
+      const parsed = JSON.parse(saved) as TabManagerState;
+      return { ...parsed, settings: { ...DEFAULT_SETTINGS, ...parsed.settings } };
+    }
+  } catch {}
+  return {
     tabGroups: {},
     tabStacks: {},
     workspaceLayouts: {},
     navigationHistories: {},
     shortcuts: {},
     settings: DEFAULT_SETTINGS,
-  });
+  };
+};
 
-  const saveTimer = useRef<number | null>(null);
+export const useTabManager = create<TabManagerStore>()(
+  immer((set: (fn: (state: TabManagerStore) => void) => void, get: () => TabManagerStore) => ({
+    ...loadInitialState(),
 
-  // Load from localStorage on mount
-  useEffect(() => {
-    try {
-      const saved = localStorage.getItem('obsidian.clone.tabManager');
-      if (saved) {
-        const parsed = JSON.parse(saved) as TabManagerState;
-        setState(prev => ({ ...prev, ...parsed, settings: { ...DEFAULT_SETTINGS, ...parsed.settings } }));
-      }
-    } catch (error) {
-      console.error('Failed to load tab manager state:', error);
-    }
-  }, []);
-
-  // Debounced save to localStorage
-  useEffect(() => {
-    if (saveTimer.current) clearTimeout(saveTimer.current);
-    saveTimer.current = window.setTimeout(() => {
-      try {
-        localStorage.setItem('obsidian.clone.tabManager', JSON.stringify(state));
-      } catch (error) {
-        console.error('Failed to save tab manager state:', error);
-      }
-    }, 500);
-
-    return () => {
-      if (saveTimer.current) clearTimeout(saveTimer.current);
-    };
-  }, [state]);
-
-  // Tab Group Management
-  const createTabGroup = useCallback((name: string, color: string, tabIds: string[] = []): string => {
-    const groupId = `group_${Date.now()}_${Math.random().toString(36).slice(2)}`;
-    const newGroup: TabGroup = {
-      id: groupId,
-      name,
-      color,
-      tabs: tabIds,
-      isCollapsed: false,
-      isLocked: false,
-      position: Object.keys(state.tabGroups).length,
-    };
-
-    setState(prev => ({
-      ...prev,
-      tabGroups: { ...prev.tabGroups, [groupId]: newGroup },
-    }));
-
-    return groupId;
-  }, [state.tabGroups]);
-
-  const updateTabGroup = useCallback((groupId: string, updates: Partial<TabGroup>) => {
-    setState(prev => ({
-      ...prev,
-      tabGroups: {
-        ...prev.tabGroups,
-        [groupId]: { ...prev.tabGroups[groupId], ...updates },
-      },
-    }));
-  }, []);
-
-  const deleteTabGroup = useCallback((groupId: string) => {
-    setState(prev => {
-      const newGroups = { ...prev.tabGroups };
-      delete newGroups[groupId];
-      return { ...prev, tabGroups: newGroups };
-    });
-  }, []);
-
-  const addTabToGroup = useCallback((tabId: string, groupId: string) => {
-    setState(prev => {
-      const group = prev.tabGroups[groupId];
-      if (!group || group.tabs.includes(tabId)) return prev;
-
-      return {
-        ...prev,
-        tabGroups: {
-          ...prev.tabGroups,
-          [groupId]: { ...group, tabs: [...group.tabs, tabId] },
-        },
+    // Tab Group Management
+    createTabGroup: (name: string, color: string, tabIds: string[] = []) => {
+      const groupId = `group_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+      const newGroup: TabGroup = {
+        id: groupId,
+        name,
+        color,
+        tabs: tabIds,
+        isCollapsed: false,
+        isLocked: false,
+        position: Object.keys(get().tabGroups).length,
       };
-    });
-  }, []);
-
-  const removeTabFromGroup = useCallback((tabId: string) => {
-    setState(prev => {
-      const newGroups = { ...prev.tabGroups };
-      Object.values(newGroups).forEach(group => {
-        const index = group.tabs.indexOf(tabId);
-        if (index > -1) {
-          group.tabs = group.tabs.filter(id => id !== tabId);
-        }
+      set((state: TabManagerStore) => {
+        state.tabGroups[groupId] = newGroup;
       });
-      return { ...prev, tabGroups: newGroups };
-    });
-  }, []);
+      return groupId;
+    },
 
-  const moveTabBetweenGroups = useCallback((tabId: string, fromGroupId: string, toGroupId: string) => {
-    setState(prev => {
-      const newGroups = { ...prev.tabGroups };
-      const fromGroup = newGroups[fromGroupId];
-      const toGroup = newGroups[toGroupId];
-
-      if (!fromGroup || !toGroup) return prev;
-
-      // Remove from source group
-      fromGroup.tabs = fromGroup.tabs.filter(id => id !== tabId);
-      
-      // Add to target group if not already present
-      if (!toGroup.tabs.includes(tabId)) {
-        toGroup.tabs.push(tabId);
-      }
-
-      return { ...prev, tabGroups: newGroups };
-    });
-  }, []);
-
-  // Tab Stack Management
-  const createTabStack = useCallback((panelId: string, tabIds: string[] = []): string => {
-    const stackId = `stack_${Date.now()}_${Math.random().toString(36).slice(2)}`;
-    const newStack: TabStack = {
-      id: stackId,
-      tabs: tabIds,
-      activeTabIndex: 0,
-      isStacked: true,
-      panelId,
-    };
-
-    setState(prev => ({
-      ...prev,
-      tabStacks: { ...prev.tabStacks, [stackId]: newStack },
-    }));
-
-    return stackId;
-  }, []);
-
-  const addTabToStack = useCallback((tabId: string, stackId: string) => {
-    setState(prev => {
-      const stack = prev.tabStacks[stackId];
-      if (!stack || stack.tabs.includes(tabId)) return prev;
-
-      return {
-        ...prev,
-        tabStacks: {
-          ...prev.tabStacks,
-          [stackId]: { ...stack, tabs: [...stack.tabs, tabId] },
-        },
-      };
-    });
-  }, []);
-
-  const removeTabFromStack = useCallback((tabId: string, stackId: string) => {
-    setState(prev => {
-      const stack = prev.tabStacks[stackId];
-      if (!stack) return prev;
-
-      const newTabs = stack.tabs.filter(id => id !== tabId);
-      const newActiveIndex = Math.min(stack.activeTabIndex, Math.max(0, newTabs.length - 1));
-
-      return {
-        ...prev,
-        tabStacks: {
-          ...prev.tabStacks,
-          [stackId]: { ...stack, tabs: newTabs, activeTabIndex: newActiveIndex },
-        },
-      };
-    });
-  }, []);
-
-  const setStackActiveTab = useCallback((stackId: string, tabIndex: number) => {
-    setState(prev => {
-      const stack = prev.tabStacks[stackId];
-      if (!stack || tabIndex < 0 || tabIndex >= stack.tabs.length) return prev;
-
-      return {
-        ...prev,
-        tabStacks: {
-          ...prev.tabStacks,
-          [stackId]: { ...stack, activeTabIndex: tabIndex },
-        },
-      };
-    });
-  }, []);
-
-  const toggleStackMode = useCallback((stackId: string) => {
-    setState(prev => ({
-      ...prev,
-      tabStacks: {
-        ...prev.tabStacks,
-        [stackId]: { ...prev.tabStacks[stackId], isStacked: !prev.tabStacks[stackId].isStacked },
-      },
-    }));
-  }, []);
-
-  // Workspace Layout Management
-  const saveWorkspaceLayout = useCallback((name: string, panelTree: any, description?: string): string => {
-    const layoutId = `layout_${Date.now()}_${Math.random().toString(36).slice(2)}`;
-    const newLayout: WorkspaceLayout = {
-      id: layoutId,
-      name,
-      description,
-      panelTree,
-      tabGroups: { ...state.tabGroups },
-      tabStacks: { ...state.tabStacks },
-      createdAt: Date.now(),
-    };
-
-    setState(prev => ({
-      ...prev,
-      workspaceLayouts: { ...prev.workspaceLayouts, [layoutId]: newLayout },
-    }));
-
-    return layoutId;
-  }, [state.tabGroups, state.tabStacks]);
-
-  const loadWorkspaceLayout = useCallback((layoutId: string): WorkspaceLayout | null => {
-    const layout = state.workspaceLayouts[layoutId];
-    if (!layout) return null;
-
-    setState(prev => ({
-      ...prev,
-      tabGroups: { ...layout.tabGroups },
-      tabStacks: { ...layout.tabStacks },
-    }));
-
-    return layout;
-  }, [state.workspaceLayouts]);
-
-  const deleteWorkspaceLayout = useCallback((layoutId: string) => {
-    setState(prev => {
-      const newLayouts = { ...prev.workspaceLayouts };
-      delete newLayouts[layoutId];
-      return { ...prev, workspaceLayouts: newLayouts };
-    });
-  }, []);
-
-  const setDefaultLayout = useCallback((layoutId: string) => {
-    setState(prev => {
-      const newLayouts = { ...prev.workspaceLayouts };
-      Object.values(newLayouts).forEach(layout => {
-        layout.isDefault = layout.id === layoutId;
+    updateTabGroup: (groupId: string, updates: Partial<TabGroup>) => {
+      set((state: TabManagerStore) => {
+        if (!state.tabGroups[groupId]) return;
+        state.tabGroups[groupId] = { ...state.tabGroups[groupId], ...updates };
       });
-      return { ...prev, workspaceLayouts: newLayouts };
-    });
-  }, []);
+    },
 
-  // Navigation Management
-  const addToHistory = useCallback((panelId: string, tabId: string) => {
-    setState(prev => {
-      const history = prev.navigationHistories[panelId] || {
+    deleteTabGroup: (groupId: string) => {
+      set((state: TabManagerStore) => {
+        delete state.tabGroups[groupId];
+      });
+    },
+
+    addTabToGroup: (tabId: string, groupId: string) => {
+      set((state: TabManagerStore) => {
+        const group = state.tabGroups[groupId];
+        if (!group) return;
+        if (!group.tabs.includes(tabId)) group.tabs.push(tabId);
+      });
+    },
+
+    removeTabFromGroup: (tabId: string) => {
+      set((state: TabManagerStore) => {
+        Object.values(state.tabGroups).forEach((group) => {
+          group.tabs = group.tabs.filter((id) => id !== tabId);
+        });
+      });
+    },
+
+    moveTabBetweenGroups: (tabId: string, fromGroupId: string, toGroupId: string) => {
+      set((state: TabManagerStore) => {
+        const fromGroup = state.tabGroups[fromGroupId];
+        const toGroup = state.tabGroups[toGroupId];
+        if (!fromGroup || !toGroup) return;
+        fromGroup.tabs = fromGroup.tabs.filter((id) => id !== tabId);
+        if (!toGroup.tabs.includes(tabId)) toGroup.tabs.push(tabId);
+      });
+    },
+
+    // Tab Stack Management
+    createTabStack: (panelId: string, tabIds: string[] = []) => {
+      const stackId = `stack_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+      const newStack: TabStack = {
+        id: stackId,
+        tabs: tabIds,
+        activeTabIndex: 0,
+        isStacked: true,
         panelId,
-        history: [],
-        currentIndex: -1,
-        maxSize: 50,
       };
+      set((state: TabManagerStore) => {
+        state.tabStacks[stackId] = newStack;
+      });
+      return stackId;
+    },
 
-      const newHistory = [...history.history];
-      const existingIndex = newHistory.indexOf(tabId);
-      
-      if (existingIndex > -1) {
-        newHistory.splice(existingIndex, 1);
-      }
-      
-      newHistory.push(tabId);
-      
-      if (newHistory.length > history.maxSize) {
-        newHistory.shift();
-      }
+    addTabToStack: (tabId: string, stackId: string) => {
+      set((state: TabManagerStore) => {
+        const stack = state.tabStacks[stackId];
+        if (!stack) return;
+        if (!stack.tabs.includes(tabId)) stack.tabs.push(tabId);
+      });
+    },
 
-      return {
-        ...prev,
-        navigationHistories: {
-          ...prev.navigationHistories,
-          [panelId]: {
-            ...history,
-            history: newHistory,
-            currentIndex: newHistory.length - 1,
-          },
-        },
+    removeTabFromStack: (tabId: string, stackId: string) => {
+      set((state: TabManagerStore) => {
+        const stack = state.tabStacks[stackId];
+        if (!stack) return;
+        const newTabs = stack.tabs.filter((id) => id !== tabId);
+        const newActiveIndex = Math.min(stack.activeTabIndex, Math.max(0, newTabs.length - 1));
+        stack.tabs = newTabs;
+        stack.activeTabIndex = newActiveIndex;
+      });
+    },
+
+    setStackActiveTab: (stackId: string, tabIndex: number) => {
+      set((state: TabManagerStore) => {
+        const stack = state.tabStacks[stackId];
+        if (!stack) return;
+        if (tabIndex < 0 || tabIndex >= stack.tabs.length) return;
+        stack.activeTabIndex = tabIndex;
+      });
+    },
+
+    toggleStackMode: (stackId: string) => {
+      set((state: TabManagerStore) => {
+        const stack = state.tabStacks[stackId];
+        if (stack) stack.isStacked = !stack.isStacked;
+      });
+    },
+
+    // Workspace Layout Management
+    saveWorkspaceLayout: (name: string, panelTree: any, description?: string) => {
+      const layoutId = `layout_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+      const current = get();
+      const newLayout: WorkspaceLayout = {
+        id: layoutId,
+        name,
+        description,
+        panelTree,
+        tabGroups: { ...current.tabGroups },
+        tabStacks: { ...current.tabStacks },
+        createdAt: Date.now(),
       };
-    });
-  }, []);
+      set((state: TabManagerStore) => {
+        state.workspaceLayouts[layoutId] = newLayout;
+      });
+      return layoutId;
+    },
 
-  const navigateBack = useCallback((panelId: string): string | null => {
-    const history = state.navigationHistories[panelId];
-    if (!history || history.currentIndex <= 0) return null;
+    loadWorkspaceLayout: (layoutId: string) => {
+      const layout = get().workspaceLayouts[layoutId];
+      if (!layout) return null;
+      set((state: TabManagerStore) => {
+        state.tabGroups = { ...layout.tabGroups };
+        state.tabStacks = { ...layout.tabStacks };
+      });
+      return layout;
+    },
 
-    const newIndex = history.currentIndex - 1;
-    const tabId = history.history[newIndex];
+    deleteWorkspaceLayout: (layoutId: string) => {
+      set((state: TabManagerStore) => {
+        delete state.workspaceLayouts[layoutId];
+      });
+    },
 
-    setState(prev => ({
-      ...prev,
-      navigationHistories: {
-        ...prev.navigationHistories,
-        [panelId]: { ...history, currentIndex: newIndex },
-      },
-    }));
+    setDefaultLayout: (layoutId: string) => {
+      set((state: TabManagerStore) => {
+        Object.values(state.workspaceLayouts).forEach((layout) => {
+          layout.isDefault = layout.id === layoutId;
+        });
+      });
+    },
 
-    return tabId;
-  }, [state.navigationHistories]);
+    // Navigation Management
+    addToHistory: (panelId: string, tabId: string) => {
+      set((state: TabManagerStore) => {
+        const history = state.navigationHistories[panelId] || {
+          panelId,
+          history: [],
+          currentIndex: -1,
+          maxSize: 50,
+        };
+        const newHistory = [...history.history];
+        const existingIndex = newHistory.indexOf(tabId);
+        if (existingIndex > -1) newHistory.splice(existingIndex, 1);
+        newHistory.push(tabId);
+        if (newHistory.length > history.maxSize) newHistory.shift();
+        state.navigationHistories[panelId] = {
+          ...history,
+          history: newHistory,
+          currentIndex: newHistory.length - 1,
+        };
+      });
+    },
 
-  const navigateForward = useCallback((panelId: string): string | null => {
-    const history = state.navigationHistories[panelId];
-    if (!history || history.currentIndex >= history.history.length - 1) return null;
+    navigateBack: (panelId: string) => {
+      const history = get().navigationHistories[panelId];
+      if (!history || history.currentIndex <= 0) return null;
+      const newIndex = history.currentIndex - 1;
+      const tabId = history.history[newIndex];
+      set((state: TabManagerStore) => {
+        state.navigationHistories[panelId] = { ...history, currentIndex: newIndex };
+      });
+      return tabId;
+    },
 
-    const newIndex = history.currentIndex + 1;
-    const tabId = history.history[newIndex];
+    navigateForward: (panelId: string) => {
+      const history = get().navigationHistories[panelId];
+      if (!history || history.currentIndex >= history.history.length - 1) return null;
+      const newIndex = history.currentIndex + 1;
+      const tabId = history.history[newIndex];
+      set((state: TabManagerStore) => {
+        state.navigationHistories[panelId] = { ...history, currentIndex: newIndex };
+      });
+      return tabId;
+    },
 
-    setState(prev => ({
-      ...prev,
-      navigationHistories: {
-        ...prev.navigationHistories,
-        [panelId]: { ...history, currentIndex: newIndex },
-      },
-    }));
+    getRecentTabs: (panelId: string, limit: number = 10) => {
+      const history = get().navigationHistories[panelId];
+      if (!history) return [];
+      return history.history.slice(-limit).reverse();
+    },
 
-    return tabId;
-  }, [state.navigationHistories]);
+    // Settings Management
+    updateSettings: (settings: Partial<TabManagerState['settings']>) => {
+      set((state: TabManagerStore) => {
+        state.settings = { ...state.settings, ...settings };
+      });
+    },
 
-  const getRecentTabs = useCallback((panelId: string, limit: number = 10): string[] => {
-    const history = state.navigationHistories[panelId];
-    if (!history) return [];
+    // Utility Functions
+    getTabsByGroup: (groupId: string) => {
+      const group = get().tabGroups[groupId];
+      return group ? group.tabs.map((id) => ({ id } as Tab)) : [];
+    },
 
-    return history.history.slice(-limit).reverse();
-  }, [state.navigationHistories]);
+    getTabsByStack: (stackId: string) => {
+      const stack = get().tabStacks[stackId];
+      return stack ? stack.tabs.map((id) => ({ id } as Tab)) : [];
+    },
 
-  // Settings Management
-  const updateSettings = useCallback((settings: Partial<TabManagerState['settings']>) => {
-    setState(prev => ({
-      ...prev,
-      settings: { ...prev.settings, ...settings },
-    }));
-  }, []);
+    shouldStackTabs: (panelId: string, tabCount: number) => {
+      const settings = get().settings;
+      return settings.enableAutoStacking && settings.stackingStrategy === 'overflow' && tabCount > settings.maxVisibleTabs;
+    },
 
-  // Utility Functions
-  const getTabsByGroup = useCallback((groupId: string): Tab[] => {
-    const group = state.tabGroups[groupId];
-    return group ? group.tabs.map(id => ({ id } as Tab)) : [];
-  }, [state.tabGroups]);
+    getGroupColors: () => DEFAULT_GROUP_COLORS,
+  }))
+);
 
-  const getTabsByStack = useCallback((stackId: string): Tab[] => {
-    const stack = state.tabStacks[stackId];
-    return stack ? stack.tabs.map(id => ({ id } as Tab)) : [];
-  }, [state.tabStacks]);
-
-  const shouldStackTabs = useCallback((panelId: string, tabCount: number): boolean => {
-    return state.settings.enableAutoStacking && 
-           state.settings.stackingStrategy === 'overflow' && 
-           tabCount > state.settings.maxVisibleTabs;
-  }, [state.settings]);
-
-  const getGroupColors = useCallback((): string[] => {
-    return DEFAULT_GROUP_COLORS;
-  }, []);
-
-  const value = useMemo<TabManagerContextValue>(() => ({
-    ...state,
-    createTabGroup,
-    updateTabGroup,
-    deleteTabGroup,
-    addTabToGroup,
-    removeTabFromGroup,
-    moveTabBetweenGroups,
-    createTabStack,
-    addTabToStack,
-    removeTabFromStack,
-    setStackActiveTab,
-    toggleStackMode,
-    saveWorkspaceLayout,
-    loadWorkspaceLayout,
-    deleteWorkspaceLayout,
-    setDefaultLayout,
-    addToHistory,
-    navigateBack,
-    navigateForward,
-    getRecentTabs,
-    updateSettings,
-    getTabsByGroup,
-    getTabsByStack,
-    shouldStackTabs,
-    getGroupColors,
-  }), [
-    state,
-    createTabGroup,
-    updateTabGroup,
-    deleteTabGroup,
-    addTabToGroup,
-    removeTabFromGroup,
-    moveTabBetweenGroups,
-    createTabStack,
-    addTabToStack,
-    removeTabFromStack,
-    setStackActiveTab,
-    toggleStackMode,
-    saveWorkspaceLayout,
-    loadWorkspaceLayout,
-    deleteWorkspaceLayout,
-    setDefaultLayout,
-    addToHistory,
-    navigateBack,
-    navigateForward,
-    getRecentTabs,
-    updateSettings,
-    getTabsByGroup,
-    getTabsByStack,
-    shouldStackTabs,
-    getGroupColors,
-  ]);
-
-  return (
-    <TabManagerContext.Provider value={value}>
-      {children}
-    </TabManagerContext.Provider>
-  );
-};
-
-export const useTabManager = (): TabManagerContextValue => {
-  const context = useContext(TabManagerContext);
-  if (!context) {
-    throw new Error('useTabManager must be used within TabManagerProvider');
-  }
-  return context;
-};
+// Persistence: subscribe and debounce save
+if (typeof window !== 'undefined') {
+  let saveTimer: number | null = null;
+  useTabManager.subscribe((state: TabManagerStore) => {
+    if (saveTimer) window.clearTimeout(saveTimer);
+    saveTimer = window.setTimeout(() => {
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+      } catch {}
+    }, 500);
+  });
+}

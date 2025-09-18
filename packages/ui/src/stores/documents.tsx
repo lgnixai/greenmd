@@ -1,4 +1,5 @@
-import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
+import { create } from 'zustand';
+import { immer } from 'zustand/middleware/immer';
 
 export interface DocumentData {
   id: string;
@@ -11,7 +12,7 @@ export interface DocumentData {
   isDirty: boolean;
 }
 
-interface DocumentsContextValue {
+interface DocumentsState {
   documentsById: Record<string, DocumentData>;
   createDocument: (name: string, options?: { content?: string; language?: string; path?: string }) => string;
   updateDocumentContent: (id: string, content: string) => void;
@@ -21,118 +22,95 @@ interface DocumentsContextValue {
   getDocument: (id?: string) => DocumentData | undefined;
 }
 
-const DocumentsContext = createContext<DocumentsContextValue | null>(null);
+const STORAGE_KEY = 'obsidian.clone.documents';
 
-export const DocumentsProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [documentsById, setDocumentsById] = useState<Record<string, DocumentData>>({});
-  const saveTimer = useRef<number | null>(null);
+const loadInitialDocuments = (): Record<string, DocumentData> => {
+  if (typeof window === 'undefined') return {};
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    return raw ? (JSON.parse(raw) as Record<string, DocumentData>) : {};
+  } catch {
+    return {};
+  }
+};
 
-  // 从 localStorage 恢复
-  useEffect(() => {
-    try {
-      const raw = localStorage.getItem('obsidian.clone.documents');
-      if (raw) {
-        const parsed = JSON.parse(raw) as Record<string, DocumentData>;
-        setDocumentsById(parsed);
-      }
-    } catch {}
-  }, []);
+export const useDocuments = create<DocumentsState>()(
+  immer((set: (fn: (state: DocumentsState) => void) => void, get: () => DocumentsState) => ({
+    documentsById: loadInitialDocuments(),
 
-  // 防抖持久化
-  useEffect(() => {
-    if (saveTimer.current) window.clearTimeout(saveTimer.current);
-    saveTimer.current = window.setTimeout(() => {
+    createDocument: (name: string, options?: { content?: string; language?: string; path?: string }) => {
+      const id = Date.now().toString() + Math.random().toString(36).slice(2);
+      const now = Date.now();
+      const doc: DocumentData = {
+        id,
+        name,
+        content: options?.content ?? '',
+        language: options?.language ?? 'markdown',
+        path: options?.path,
+        createdAt: now,
+        updatedAt: now,
+        isDirty: Boolean(options?.content && options?.content.length > 0)
+      };
+      set((state) => {
+        state.documentsById[id] = doc;
+      });
+      return id;
+    },
+
+    updateDocumentContent: (id: string, content: string) => {
+      set((state: DocumentsState) => {
+        const existing = state.documentsById[id];
+        if (!existing) return;
+        existing.content = content;
+        existing.updatedAt = Date.now();
+        existing.isDirty = true;
+      });
+    },
+
+    renameDocument: (id: string, name: string) => {
+      set((state: DocumentsState) => {
+        const existing = state.documentsById[id];
+        if (!existing) return;
+        existing.name = name;
+        existing.updatedAt = Date.now();
+      });
+    },
+
+    setDocumentLanguage: (id: string, language: string) => {
+      set((state: DocumentsState) => {
+        const existing = state.documentsById[id];
+        if (!existing) return;
+        existing.language = language;
+        existing.updatedAt = Date.now();
+      });
+    },
+
+    setDocumentPath: (id: string, path: string) => {
+      set((state: DocumentsState) => {
+        const existing = state.documentsById[id];
+        if (!existing) return;
+        existing.path = path;
+        existing.updatedAt = Date.now();
+      });
+    },
+
+    getDocument: (id?: string) => {
+      if (!id) return undefined;
+      return get().documentsById[id];
+    }
+  }))
+);
+
+// Persistence: debounce save
+if (typeof window !== 'undefined') {
+  let timer: number | null = null;
+  useDocuments.subscribe((state: DocumentsState) => {
+    if (timer) window.clearTimeout(timer);
+    timer = window.setTimeout(() => {
       try {
-        localStorage.setItem('obsidian.clone.documents', JSON.stringify(documentsById));
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(state.documentsById));
       } catch {}
     }, 500);
-    return () => {
-      if (saveTimer.current) window.clearTimeout(saveTimer.current);
-    };
-  }, [documentsById]);
-
-  const createDocument = useCallback((name: string, options?: { content?: string; language?: string; path?: string }) => {
-    const id = Date.now().toString() + Math.random().toString(36).slice(2);
-    const now = Date.now();
-    const doc: DocumentData = {
-      id,
-      name,
-      content: options?.content ?? '',
-      language: options?.language ?? 'markdown',
-      path: options?.path,
-      createdAt: now,
-      updatedAt: now,
-      isDirty: Boolean(options?.content && options?.content.length > 0)
-    };
-    setDocumentsById(prev => ({ ...prev, [id]: doc }));
-    return id;
-  }, []);
-
-  const updateDocumentContent = useCallback((id: string, content: string) => {
-    setDocumentsById(prev => {
-      const existing = prev[id];
-      if (!existing) return prev;
-      const updated: DocumentData = {
-        ...existing,
-        content,
-        updatedAt: Date.now(),
-        isDirty: true
-      };
-      return { ...prev, [id]: updated };
-    });
-  }, []);
-
-  const renameDocument = useCallback((id: string, name: string) => {
-    setDocumentsById(prev => {
-      const existing = prev[id];
-      if (!existing) return prev;
-      return { ...prev, [id]: { ...existing, name, updatedAt: Date.now() } };
-    });
-  }, []);
-
-  const setDocumentLanguage = useCallback((id: string, language: string) => {
-    setDocumentsById(prev => {
-      const existing = prev[id];
-      if (!existing) return prev;
-      return { ...prev, [id]: { ...existing, language, updatedAt: Date.now() } };
-    });
-  }, []);
-
-  const setDocumentPath = useCallback((id: string, path: string) => {
-    setDocumentsById(prev => {
-      const existing = prev[id];
-      if (!existing) return prev;
-      return { ...prev, [id]: { ...existing, path, updatedAt: Date.now() } };
-    });
-  }, []);
-
-  const getDocument = useCallback((id?: string) => {
-    if (!id) return undefined;
-    return documentsById[id];
-  }, [documentsById]);
-
-  const value = useMemo<DocumentsContextValue>(() => ({
-    documentsById,
-    createDocument,
-    updateDocumentContent,
-    renameDocument,
-    setDocumentLanguage,
-    setDocumentPath,
-    getDocument
-  }), [documentsById, createDocument, updateDocumentContent, renameDocument, setDocumentLanguage, setDocumentPath, getDocument]);
-
-  return (
-    <DocumentsContext.Provider value={value}>
-      {children}
-    </DocumentsContext.Provider>
-  );
-};
-
-export const useDocuments = (): DocumentsContextValue => {
-  const ctx = useContext(DocumentsContext);
-  if (!ctx) {
-    throw new Error('useDocuments must be used within DocumentsProvider');
-  }
-  return ctx;
-};
+  });
+}
 

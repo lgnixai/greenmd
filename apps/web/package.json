@@ -14,8 +14,11 @@
   "dependencies": {
     "@dtinsight/molecule-core": "workspace:*",
     "@dtinsight/molecule-ui": "workspace:*",
+    "zustand": "^4.4.7",
     "react": "^18.2.0",
-    "react-dom": "^18.2.0"
+    "react-dom": "^18.2.0",
+    "clsx": "^2.1.1",
+    "tailwind-merge": "^2.2.2"
   },
   "devDependencies": {
     "@types/react": "^18.2.45",

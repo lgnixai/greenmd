@@ -10,6 +10,7 @@ export default defineConfig({
   external: [
     '@dtinsight/molecule-types',
     '@dtinsight/molecule-shared',
+    '@dtinsight/molecule-core-legacy',
     'zustand',
     'immer'
   ]

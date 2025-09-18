@@ -17,6 +17,7 @@
   "dependencies": {
     "@dtinsight/molecule-types": "workspace:*",
     "@dtinsight/molecule-shared": "workspace:*",
+    "@dtinsight/molecule-core-legacy": "workspace:*",
     "zustand": "^4.4.7",
     "immer": "^10.0.3"
   },

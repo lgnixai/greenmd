@@ -239,10 +239,13 @@ export class TestUtils {
           result = mockFn._implementation(...args);
         } else if (mockFn._returnValues.length > 0) {
           const returnValue = mockFn._returnValues.shift();
-          if (returnValue instanceof Error) {
+          if (!returnValue) {
+            result = mockFn._defaultReturnValue;
+          } else if (returnValue instanceof Error) {
             throw returnValue;
+          } else {
+            result = returnValue;
           }
-          result = returnValue;
         } else {
           result = mockFn._defaultReturnValue;
         }
@@ -406,7 +409,7 @@ export interface MockFunction<T extends (...args: any[]) => any> {
   
   _calls: Array<Parameters<T>>;
   _results: Array<ReturnType<T> | Error>;
-  _returnValues: Array<ReturnType<T>>;
+  _returnValues: Array<ReturnType<T> | Error>;
   _defaultReturnValue: ReturnType<T>;
   _implementation?: T;
   

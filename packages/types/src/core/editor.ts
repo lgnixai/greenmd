@@ -1,6 +1,6 @@
 // 编辑器核心类型定义
 
-import type { UniqueId, IEventEmitter, Disposable, IRange, ISelection, IPosition } from './common';
+import type { UniqueId, IEventEmitter, Disposable, IRange, ISelection, IPosition, IRectangle, ISize } from './common';
 
 // 编辑器标签页
 export interface IEditorTab {

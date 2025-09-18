@@ -7,7 +7,7 @@
     "declarationMap": true,
     "sourceMap": true,
     "composite": true,
-    "incremental": true,
+    "incremental": false,
     "tsBuildInfoFile": "./dist/.tsbuildinfo",
     "baseUrl": "./src",
     "paths": {

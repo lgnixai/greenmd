@@ -430,7 +430,7 @@ export const StorageUtils = {
       const writer = stream.writable.getWriter();
       const reader = stream.readable.getReader();
       
-      writer.write(data);
+      writer.write(data as BufferSource);
       writer.close();
       
       const chunks: Uint8Array[] = [];

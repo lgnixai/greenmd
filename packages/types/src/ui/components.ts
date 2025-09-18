@@ -13,7 +13,7 @@ export interface IBaseComponentProps {
 }
 
 // 按钮组件
-export interface IButtonProps extends IBaseComponentProps, Omit<HTMLAttributes<HTMLButtonElement>, 'onClick'> {
+export interface IButtonProps extends IBaseComponentProps {
   readonly variant?: 'primary' | 'secondary' | 'outline' | 'ghost' | 'link' | 'destructive';
   readonly size?: 'sm' | 'md' | 'lg' | 'icon';
   readonly disabled?: boolean;
@@ -24,7 +24,7 @@ export interface IButtonProps extends IBaseComponentProps, Omit<HTMLAttributes<H
 }
 
 // 输入框组件
-export interface IInputProps extends IBaseComponentProps, Omit<HTMLAttributes<HTMLInputElement>, 'onChange' | 'onFocus' | 'onBlur'> {
+export interface IInputProps extends IBaseComponentProps {
   readonly type?: 'text' | 'password' | 'email' | 'number' | 'search' | 'url' | 'tel';
   readonly value?: string;
   readonly defaultValue?: string;

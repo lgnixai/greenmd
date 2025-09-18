@@ -98,7 +98,7 @@ export function memoizeAsync<T extends (...args: any[]) => Promise<any>>(
   keyGenerator?: (...args: Parameters<T>) => string,
   ttl?: number
 ): T {
-  const cache = new Map<string, { value: ReturnType<T>; timestamp: number }>();
+  const cache = new Map<string, { value: Awaited<ReturnType<T>>; timestamp: number }>();
   
   return (async (...args: Parameters<T>): Promise<Awaited<ReturnType<T>>> => {
     const key = keyGenerator ? keyGenerator(...args) : JSON.stringify(args);

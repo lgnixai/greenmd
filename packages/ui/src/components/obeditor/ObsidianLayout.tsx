@@ -10,15 +10,14 @@ import { FolderPlus, FilePlus, FileText, MoreHorizontal, Layout, Save } from 'lu
 import { useFileTree } from '@/stores/filetree';
 import useShortcuts from '@/hooks/useShortcuts';
 
-interface PanelNode {
-  id: string;
-  type: 'leaf' | 'split';
-  direction?: 'horizontal' | 'vertical';
-  tabs?: TabType[];
-  children?: PanelNode[];
-  size?: number;
-  minSize?: number;
-}
+import type { PanelNode } from '@dtinsight/molecule-core';
+import {
+  findNodeById as findNodeByIdCore,
+  findFirstLeaf as findFirstLeafCore,
+  updateTabsForPanel,
+  splitPanelImmutable,
+  removePanelNodeImmutable,
+} from '@dtinsight/molecule-core';
 
 interface FileNode {
   id: string;
@@ -83,29 +82,11 @@ const ObsidianLayout: React.FC = () => {
   }, [createDocument]);
 
   const findPanelById = useCallback((tree: PanelNode, id: string): PanelNode | null => {
-    if (tree.id === id) return tree;
-    if (tree.children) {
-      for (const child of tree.children) {
-        const result = findPanelById(child, id);
-        if (result) return result;
-      }
-    }
-    return null;
+    return findNodeByIdCore(tree, id);
   }, []);
 
   const updatePanelTabs = useCallback((panelId: string, newTabs: TabType[]) => {
-    setPanelTree(prevTree => {
-      const updateNode = (node: PanelNode): PanelNode => {
-        if (node.id === panelId && node.type === 'leaf') {
-          return { ...node, tabs: newTabs };
-        }
-        if (node.children) {
-          return { ...node, children: node.children.map(updateNode) };
-        }
-        return node;
-      };
-      return updateNode(prevTree);
-    });
+    setPanelTree(prevTree => updateTabsForPanel(prevTree, panelId, newTabs as any));
   }, []);
 
   // 历史栈：记录每个叶子面板的激活序列
@@ -213,14 +194,8 @@ const ObsidianLayout: React.FC = () => {
   }, [panelTree, findPanelById]);
 
   const findFirstLeafPanelId = useCallback((tree: PanelNode): string | null => {
-    if (tree.type === 'leaf' && tree.tabs) return tree.id;
-    if (tree.children) {
-      for (const child of tree.children) {
-        const result = findFirstLeafPanelId(child);
-        if (result) return result;
-      }
-    }
-    return null;
+    const leaf = findFirstLeafCore(tree);
+    return leaf ? leaf.id : null;
   }, []);
 
   const openDocumentInTargetPanel = useCallback((docId: string, title: string, filePath?: string) => {
@@ -274,79 +249,13 @@ const ObsidianLayout: React.FC = () => {
   }, [panelTree, findPanelById]);
 
   const splitPanel = useCallback((panelId: string, direction: 'horizontal' | 'vertical') => {
-    setPanelTree(prevTree => {
-      const splitNode = (node: PanelNode): PanelNode => {
-        if (node.id === panelId && node.type === 'leaf') {
-          // 获取当前标签页的活动标签
-          const activeTab = node.tabs?.find(tab => tab.isActive);
-          const newTab = activeTab 
-            ? { ...activeTab, id: Date.now().toString(), isActive: true }
-            : { id: Date.now().toString(), title: '新标签页', isActive: true, documentId: createDocument('新标签页') };
-
-          // 创建新的分割面板
-          return {
-            id: node.id,
-            type: 'split',
-            direction,
-            size: node.size,
-            minSize: node.minSize,
-            children: [
-              {
-                id: `${node.id}-original`,
-                type: 'leaf',
-                tabs: node.tabs,
-                size: 50,
-                minSize: 20
-              },
-              {
-                id: `${node.id}-split-${Date.now()}`,
-                type: 'leaf',
-                tabs: [newTab],
-                size: 50,
-                minSize: 20
-              }
-            ]
-          };
-        }
-        if (node.children) {
-          return { ...node, children: node.children.map(splitNode) };
-        }
-        return node;
-      };
-      return splitNode(prevTree);
-    });
+    setPanelTree(prevTree =>
+      splitPanelImmutable(prevTree, panelId, direction, () => ({ id: Date.now().toString(), title: '新标签页', isActive: true, documentId: createDocument('新标签页') } as any))
+    );
   }, [createDocument]);
 
   const removePanelNode = useCallback((panelId: string) => {
-    setPanelTree(prevTree => {
-      const removeNode = (node: PanelNode, parentNode?: PanelNode): PanelNode | null => {
-        if (node.id === panelId) {
-          return null; // 标记为删除
-        }
-        
-        if (node.children) {
-          const newChildren = node.children
-            .map(child => removeNode(child, node))
-            .filter((child): child is PanelNode => child !== null);
-          
-          // 如果只剩一个子节点，将其提升到当前级别
-          if (newChildren.length === 1 && parentNode) {
-            return { ...newChildren[0], size: node.size };
-          }
-          
-          return { ...node, children: newChildren };
-        }
-        
-        return node;
-      };
-      
-      const result = removeNode(prevTree);
-      return result || {
-        id: 'root',
-        type: 'leaf',
-        tabs: [{ id: Date.now().toString(), title: '新标签页', isActive: true }]
-      };
-    });
+    setPanelTree(prevTree => removePanelNodeImmutable(prevTree, panelId));
   }, []);
 
   const handleCloseTab = useCallback((panelId: string) => (id: string) => {

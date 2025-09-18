@@ -169,9 +169,21 @@ export class FormValidator<T extends Record<string, any> = Record<string, any>> 
     const errors: string[] = [];
 
     for (const rule of fieldRules) {
-      const error = rule.validator(value);
+      let error: string | null;
+      let message: string | undefined;
+      
+      if (typeof rule === 'function') {
+        // It's a Validator function
+        error = rule(value);
+        message = undefined;
+      } else {
+        // It's a ValidationRule object
+        error = rule.validator(value);
+        message = rule.message;
+      }
+      
       if (error) {
-        errors.push(rule.message || error);
+        errors.push(message || error);
       }
     }
 

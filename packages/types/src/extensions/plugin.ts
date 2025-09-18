@@ -1,6 +1,7 @@
 // 插件系统类型定义
 
 import type { UniqueId, IEventEmitter, Disposable, IService } from '../core/common';
+import type { IThemeContribution } from '../core/theme';
 
 // 插件状态
 export enum PluginState {
@@ -130,13 +131,6 @@ export interface IGrammarContribution {
   readonly injectTo?: string[];
 }
 
-// 主题贡献
-export interface IThemeContribution {
-  readonly id: string;
-  readonly label: string;
-  readonly uiTheme: 'vs' | 'vs-dark' | 'hc-black' | 'hc-light';
-  readonly path: string;
-}
 
 // 图标主题贡献
 export interface IIconThemeContribution {

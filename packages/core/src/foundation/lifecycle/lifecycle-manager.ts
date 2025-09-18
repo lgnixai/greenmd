@@ -1,6 +1,7 @@
 // 生命周期管理器
 
-import type { ILifecycle, IEventEmitter, LifecyclePhase, Disposable } from '@dtinsight/molecule-types';
+import { LifecyclePhase } from '@dtinsight/molecule-types';
+import type { ILifecycle, IEventEmitter, Disposable } from '@dtinsight/molecule-types';
 import { EventBus } from '../events/event-bus';
 import { MoleculeError, ERROR_CODES } from '@dtinsight/molecule-shared';
 
@@ -47,7 +48,7 @@ export class LifecycleManager implements ILifecycleService {
   }
 
   get onDidChangePhase(): IEventEmitter<LifecyclePhase> {
-    return this._onDidChangePhase;
+    return this._onDidChangePhase as unknown as IEventEmitter<LifecyclePhase>;
   }
 
   // 注册启动钩子

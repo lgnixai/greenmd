@@ -1,9 +1,4 @@
-// Core package exports
-export * from './types';
-export * from './stores';
-export * from './services';
-export * from './hooks';
+// 新核心包导出
 
-// Utilities
-export * from './utils/panelTree';
-
+export * from './foundation';
+export * from './services/base';

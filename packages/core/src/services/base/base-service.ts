@@ -272,8 +272,8 @@ export abstract class ConfigurableService<T = any> extends BaseService {
 }
 
 // 服务装饰器
-export function Service(id?: string): ClassDecorator {
-  return function <T extends new (...args: any[]) => BaseService>(constructor: T) {
+export function Service(id?: string) {
+  return function <T extends new (...args: any[]) => BaseService>(constructor: T): T {
     const serviceId = id || constructor.name;
     
     // 可以在这里添加服务注册逻辑

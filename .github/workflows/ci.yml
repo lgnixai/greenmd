@@ -1,6 +1,7 @@
 name: CI
 
 on:
+ 
   push:
     branches: [ main, develop ]
   pull_request:
@@ -93,3 +94,4 @@ jobs:
         test -f packages/core/dist/index.d.ts || (echo "Core package not built properly" && exit 1)
         test -f packages/ui/dist/index.d.ts || (echo "UI package not built properly" && exit 1)
         echo "All packages built successfully!"
+ 

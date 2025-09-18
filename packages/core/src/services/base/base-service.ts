@@ -279,6 +279,9 @@ export function Service(id?: string) {
     // 可以在这里添加服务注册逻辑
     // 例如：globalContainer.registerType(serviceId, constructor);
     
+    // 暂时避免未使用变量警告
+    void serviceId;
+    
     return constructor;
   };
 }

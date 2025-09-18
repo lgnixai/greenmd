@@ -1,6 +1,6 @@
 // 插件系统类型定义
 
-import type { UniqueId, IEventEmitter, Disposable, IService } from '../core/common';
+import type { IEventEmitter, Disposable, IService } from '../core/common';
 import type { IThemeContribution } from '../core/theme';
 
 // 插件状态

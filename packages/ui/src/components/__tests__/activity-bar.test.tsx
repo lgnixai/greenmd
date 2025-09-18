@@ -1,6 +1,7 @@
 import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { ActivityBar } from '../activity-bar';
+import * as moleculeCore from '@dtinsight/molecule-core';
 
 // Mock the layout store
 const mockLayoutStore = {
@@ -71,7 +72,7 @@ describe('ActivityBar Error Handling', () => {
       }
     };
 
-    jest.mocked(require('@dtinsight/molecule-core').useLayoutStore).mockReturnValue(customLayoutStore);
+    jest.mocked(moleculeCore.useLayoutStore).mockReturnValue(customLayoutStore);
     
     render(<ActivityBar />);
     
@@ -96,7 +97,7 @@ describe('ActivityBar Error Handling', () => {
       }
     };
 
-    jest.mocked(require('@dtinsight/molecule-core').useLayoutStore).mockReturnValue(customLayoutStore);
+    jest.mocked(moleculeCore.useLayoutStore).mockReturnValue(customLayoutStore);
     
     render(<ActivityBar />);
     
@@ -107,7 +108,7 @@ describe('ActivityBar Error Handling', () => {
   });
 
   it('handles layout store errors gracefully', () => {
-    jest.mocked(require('@dtinsight/molecule-core').useLayoutStore).mockImplementation(() => {
+    jest.mocked(moleculeCore.useLayoutStore).mockImplementation(() => {
       throw new Error('Store error');
     });
     
@@ -144,7 +145,7 @@ describe('ActivityBar Error Handling', () => {
       })
     };
 
-    jest.mocked(require('@dtinsight/molecule-core').useLayoutStore).mockReturnValue(errorLayoutStore);
+    jest.mocked(moleculeCore.useLayoutStore).mockReturnValue(errorLayoutStore);
     
     render(<ActivityBar />);
     

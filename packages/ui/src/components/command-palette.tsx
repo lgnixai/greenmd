@@ -14,7 +14,7 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({ className }) => 
       <div className="w-[560px] rounded-md overflow-hidden shadow-xl" onClick={(e) => e.stopPropagation()}>
         <div className="bg-background border-b px-3 py-2 text-sm">命令面板</div>
         <div className="bg-background max-h-80 overflow-auto">
-          {commands.map(cmd => (
+          {commands.map((cmd: any) => (
             <button
               key={cmd.id}
               className="w-full text-left px-3 py-2 hover:bg-accent"

@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { cn } from "@/lib/utils";
-import { useLayoutStore } from '@dtinsight/molecule-core';
+import { useLayoutStore } from '@lginxai/greenmd-core-legacy';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/tabs";
 import { ChevronUp, X } from 'lucide-react';
 // 移除底部的“辅助栏”标签，将辅助栏回归右侧分栏

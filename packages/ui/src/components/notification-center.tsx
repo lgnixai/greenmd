@@ -1,6 +1,6 @@
 import React from 'react';
 import { cn } from "@/lib/utils";
-import { useNotificationService } from '@dtinsight/molecule-core';
+import { useNotificationService } from '@lginxai/greenmd-core-legacy';
 import { Button } from '@/components/button';
 import { X, Bell } from 'lucide-react';
 

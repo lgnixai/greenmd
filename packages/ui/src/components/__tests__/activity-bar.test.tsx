@@ -14,7 +14,7 @@ const mockLayoutStore = {
   setSidebarCurrent: jest.fn()
 };
 
-jest.mock('@dtinsight/molecule-core', () => ({
+jest.mock('@lginxai/greenmd-core-legacy', () => ({
   useLayoutStore: () => mockLayoutStore
 }));
 
@@ -71,7 +71,7 @@ describe('ActivityBar Error Handling', () => {
       }
     };
 
-    jest.mocked(require('@dtinsight/molecule-core').useLayoutStore).mockReturnValue(customLayoutStore);
+    jest.mocked(require('@lginxai/greenmd-core-legacy').useLayoutStore).mockReturnValue(customLayoutStore);
     
     render(<ActivityBar />);
     
@@ -96,7 +96,7 @@ describe('ActivityBar Error Handling', () => {
       }
     };
 
-    jest.mocked(require('@dtinsight/molecule-core').useLayoutStore).mockReturnValue(customLayoutStore);
+    jest.mocked(require('@lginxai/greenmd-core-legacy').useLayoutStore).mockReturnValue(customLayoutStore);
     
     render(<ActivityBar />);
     
@@ -107,7 +107,7 @@ describe('ActivityBar Error Handling', () => {
   });
 
   it('handles layout store errors gracefully', () => {
-    jest.mocked(require('@dtinsight/molecule-core').useLayoutStore).mockImplementation(() => {
+    jest.mocked(require('@lginxai/greenmd-core-legacy').useLayoutStore).mockImplementation(() => {
       throw new Error('Store error');
     });
     
@@ -144,7 +144,7 @@ describe('ActivityBar Error Handling', () => {
       })
     };
 
-    jest.mocked(require('@dtinsight/molecule-core').useLayoutStore).mockReturnValue(errorLayoutStore);
+    jest.mocked(require('@lginxai/greenmd-core-legacy').useLayoutStore).mockReturnValue(errorLayoutStore);
     
     render(<ActivityBar />);
     

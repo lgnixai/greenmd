@@ -8,8 +8,8 @@ export default defineConfig({
   sourcemap: true,
   clean: true,
   external: [
-    '@dtinsight/molecule-types',
-    '@dtinsight/molecule-shared',
+    '@lginxai/greenmd-types',
+    '@lginxai/greenmd-shared',
     'zustand',
     'immer'
   ]

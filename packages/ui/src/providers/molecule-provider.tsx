@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useMemo } from 'react';
-import { ExtensionService } from '@dtinsight/molecule-core';
-import type { IMoleculeConfig, IUseMoleculeReturn } from '@dtinsight/molecule-core';
+import { ExtensionService } from '@lginxai/greenmd-core-legacy';
+import type { IMoleculeConfig, IUseMoleculeReturn } from '@lginxai/greenmd-types';
 
 interface MoleculeProviderProps {
   config: IMoleculeConfig;

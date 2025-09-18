@@ -1,5 +1,5 @@
 {
-  "name": "@dtinsight/molecule-core",
+  "name": "@lginxai/greenmd-core",
   "version": "3.0.0-alpha.0",
   "description": "Core business logic and services for Molecule 3.x",
   "main": "dist/index.js",
@@ -15,8 +15,8 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {
-    "@dtinsight/molecule-types": "workspace:*",
-    "@dtinsight/molecule-shared": "workspace:*",
+    "@lginxai/greenmd-types": "workspace:*",
+    "@lginxai/greenmd-shared": "workspace:*",
     "zustand": "^4.4.7",
     "immer": "^10.0.3"
   },

@@ -1,9 +1,9 @@
 // 生命周期管理器
 
-import { LifecyclePhase } from '@dtinsight/molecule-types';
-import type { ILifecycle, IEventEmitter, Disposable } from '@dtinsight/molecule-types';
+import { LifecyclePhase } from '@lginxai/greenmd-types';
+import type { ILifecycle, IEventEmitter, Disposable } from '@lginxai/greenmd-types';
 import { EventBus } from '../events/event-bus';
-import { MoleculeError, ERROR_CODES } from '@dtinsight/molecule-shared';
+import { MoleculeError, ERROR_CODES } from '@lginxai/greenmd-shared';
 
 // 生命周期钩子函数类型
 export type LifecycleHook = () => Promise<void> | void;

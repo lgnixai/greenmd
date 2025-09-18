@@ -15,17 +15,10 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {
-<<<<<<< Current (Your changes)
- 
-    "@lginxai/greenmd-types": "workspace:*",
-    "@lginxai/greenmd-shared": "workspace:*",
-     "zustand": "^4.4.7",
-=======
     "@dtinsight/molecule-types": "workspace:*",
     "@dtinsight/molecule-shared": "workspace:*",
     "@dtinsight/molecule-core-legacy": "workspace:*",
     "zustand": "^4.4.7",
->>>>>>> Incoming (Background Agent changes)
     "immer": "^10.0.3"
   },
   "devDependencies": {

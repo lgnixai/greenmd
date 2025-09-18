@@ -1,5 +1,5 @@
 import React from 'react';
-import { cn } from '../lib/utils';
+import { cn } from "@/lib/utils";
 import { GitBranch, CheckCircle, Bell, Sun, Moon, Sparkles } from 'lucide-react';
 import { useLayoutStore, useThemeService } from '@dtinsight/molecule-core';
 

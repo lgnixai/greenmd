@@ -6,11 +6,24 @@ import path from 'path'
 export default defineConfig({
   plugins: [react()],
   resolve: {
-    alias: {
-      '@': path.resolve(__dirname, './src'),
-      '@dtinsight/molecule-core': path.resolve(__dirname, '../../packages/core/src'),
-      '@dtinsight/molecule-ui': path.resolve(__dirname, '../../packages/ui/src'),
-    },
+    alias: [
+      {
+        find: /^@\/(.*)$/,
+        replacement: path.resolve(__dirname, '../../packages/ui/src/$1'),
+      },
+      {
+        find: '@',
+        replacement: path.resolve(__dirname, './src'),
+      },
+      {
+        find: '@dtinsight/molecule-core',
+        replacement: path.resolve(__dirname, '../../packages/core/src'),
+      },
+      {
+        find: '@dtinsight/molecule-ui',
+        replacement: path.resolve(__dirname, '../../packages/ui/src'),
+      },
+    ],
   },
   server: {
     port: 3000,

@@ -1,8 +1,8 @@
 import React from 'react';
-import { cn } from '../lib/utils';
-import { Input } from './input';
-import { Button } from './button';
-import { Checkbox } from './checkbox';
+import { cn } from "@/lib/utils";
+import { Input } from "@/components/input";
+import { Button } from "@/components/button";
+import { Checkbox } from "@/components/checkbox";
 import { useSearchService } from '@dtinsight/molecule-core';
 
 export interface SearchViewProps {

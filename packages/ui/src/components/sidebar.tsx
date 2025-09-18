@@ -1,11 +1,11 @@
 import React from 'react';
-import { cn } from '../lib/utils';
+import { cn } from "@/lib/utils";
 import { useLayoutStore } from '@dtinsight/molecule-core';
-import { Explorer } from './explorer';
-import { TestPane } from './test-pane';
-import { SearchView } from './search-view';
-import { NotificationCenter } from './notification-center';
-import { SettingsPanel } from './settings-panel';
+import { Explorer } from "@/components/explorer";
+import { TestPane } from "@/components/test-pane";
+import { SearchView } from "@/components/search-view";
+import { NotificationCenter } from "@/components/notification-center";
+import { SettingsPanel } from "@/components/settings-panel";
 
 export interface SidebarProps {
   className?: string;

@@ -1,10 +1,10 @@
 import React from 'react';
-import { cn } from '../lib/utils';
-import { Button } from './button';
+import { cn } from "@/lib/utils";
+import { Button } from "@/components/button";
 import { ChevronRight, ChevronDown, File, Folder, FolderOpen } from 'lucide-react';
 import type { IFileTreeNode } from '@dtinsight/molecule-core';
-import { ContextMenu } from './context-menu';
-import { EditorTree } from './editor-tree';
+import { ContextMenu } from "@/components/context-menu";
+import { EditorTree } from "@/components/editor-tree";
 import { useEditorService } from '@dtinsight/molecule-core';
 
 export interface ExplorerProps {

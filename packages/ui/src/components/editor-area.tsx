@@ -1,9 +1,9 @@
 import React from 'react';
-import { cn } from '../lib/utils';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from './tabs';
+import { cn } from "@/lib/utils";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/tabs";
 import { useEditorService } from '@dtinsight/molecule-core';
-import { WelcomePage } from './welcome-page';
-import { MonacoEditor } from './monaco-editor';
+import { WelcomePage } from "@/components/welcome-page";
+import { MonacoEditor } from "@/components/monaco-editor";
 import { X, Circle } from 'lucide-react';
 
 export interface EditorAreaProps {

@@ -1,5 +1,5 @@
-import { Tab, EditorSettings } from '../types/obsidian-editor';
-import { storageManager } from './storage-manager';
+import { Tab, EditorSettings } from "@/types/obsidian-editor';
+import { storageManager } from "@/components/storage-manager";
 
 /**
  * 自动保存服务

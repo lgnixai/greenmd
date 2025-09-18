@@ -1,6 +1,6 @@
 import React from 'react';
-import { cn } from '../lib/utils';
-import { Button } from './button';
+import { cn } from "@/lib/utils";
+import { Button } from "@/components/button";
 import { Settings } from 'lucide-react';
 import { useLayoutStore } from '@dtinsight/molecule-core';
 

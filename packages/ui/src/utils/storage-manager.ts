@@ -1,4 +1,4 @@
-import { EditorState, SessionData, Tab, EditorPane, StateError } from '../types/obsidian-editor';
+import { EditorState, SessionData, Tab, EditorPane, StateError } from "@/types/obsidian-editor';
 
 /**
  * 本地存储管理器

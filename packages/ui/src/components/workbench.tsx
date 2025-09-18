@@ -1,15 +1,17 @@
 import React from 'react';
-import { cn } from '../lib/utils';
+import { cn } from '@/lib/utils';
 import { useLayoutStore } from '@dtinsight/molecule-core';
-import { ActivityBar } from './activity-bar';
-import { Sidebar } from './sidebar';
-import { ObsidianEditor } from './obsidian-editor/obsidian-editor';
-import { Panel } from './panel';
-import { StatusBar } from './status-bar';
-import { MenuBar } from './menu-bar';
-import { AuxiliaryPane } from './auxiliary-pane';
-import { ResizablePanel } from './resizable-panel';
-import { ResizableBottomPanel } from './resizable-bottom-panel';
+import { ActivityBar } from '@/components/activity-bar';
+import { Sidebar } from '@/components/sidebar';
+//import { ObsidianEditor } from '@/components/obsidian-editor/obsidian-editor';
+import { ObsidianEditor } from '@/components/obeditor';
+
+import { Panel } from '@/components/panel';
+import { StatusBar } from '@/components/status-bar';
+import { MenuBar } from '@/components/menu-bar';
+import { AuxiliaryPane } from '@/components/auxiliary-pane';
+import { ResizablePanel } from '@/components/resizable-panel';
+import { ResizableBottomPanel } from '@/components/resizable-bottom-panel';
 
 export interface WorkbenchProps {
   className?: string;

@@ -1,7 +1,7 @@
 import React from 'react';
-import { cn } from '../lib/utils';
+import { cn } from "@/lib/utils";
 import { useNotificationService } from '@dtinsight/molecule-core';
-import { Button } from './button';
+import { Button } from '@/components/button';
 import { X, Bell } from 'lucide-react';
 
 export interface NotificationCenterProps {

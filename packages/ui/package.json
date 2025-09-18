@@ -4,7 +4,6 @@
   "description": "UI components for Molecule IDE framework based on shadcn/ui",
   "main": "./dist/index.js",
   "module": "./dist/index.mjs",
-  "types": "./dist/index.d.ts",
   "exports": {
     ".": {
       "import": "./dist/index.mjs",
@@ -54,6 +53,7 @@
     "clsx": "^2.0.0",
     "lucide-react": "^0.294.0",
     "monaco-editor": "^0.53.0",
+    "react-resizable-panels": "^3.0.6",
     "tailwind-merge": "^2.0.0",
     "tailwindcss-animate": "^1.0.7"
   },

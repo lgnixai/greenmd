@@ -9,11 +9,11 @@ import {
   PaneSplitter,
   StateError,
   TabGroup
-} from '../types/obsidian-editor';
-import { generateId, createDefaultTab, createDefaultPane, createDefaultSettings } from '../utils/obsidian-editor-utils';
-import { storageManager } from '../utils/storage-manager';
-import { sessionRecoveryService } from '../utils/session-recovery';
-import { autoSaveService } from '../utils/auto-save-service';
+} from "@/types/obsidian-editor';
+import { generateId, createDefaultTab, createDefaultPane, createDefaultSettings } from "@/utils/obsidian-editor-utils';
+import { storageManager } from "@/utils/storage-manager';
+import { sessionRecoveryService } from "@/utils/session-recovery';
+import { autoSaveService } from "@/utils/auto-save-service';
 
 interface EditorActions {
   // Tab 操作

@@ -1,6 +1,6 @@
-import { EditorState, Tab, EditorPane, StateError } from '../types/obsidian-editor';
-import { storageManager } from './storage-manager';
-import { generateId, createDefaultTab, createDefaultPane, createDefaultSettings } from './obsidian-editor-utils';
+import { EditorState, Tab, EditorPane, StateError } from "@/types/obsidian-editor';
+import { storageManager } from "@/components/storage-manager";
+import { generateId, createDefaultTab, createDefaultPane, createDefaultSettings } from "@/components/obsidian-editor-utils";
 
 /**
  * 会话恢复服务

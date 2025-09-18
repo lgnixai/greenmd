@@ -1,7 +1,7 @@
 import React from 'react';
-import { cn } from '../lib/utils';
+import { cn } from "@/lib/utils";
 import { useLayoutStore, useThemeService } from '@dtinsight/molecule-core';
-import { Checkbox } from './checkbox';
+import { Checkbox } from "@/components/checkbox";
 
 export interface SettingsPanelProps {
   className?: string;

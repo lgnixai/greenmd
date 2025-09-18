@@ -1,6 +1,6 @@
 import React from 'react';
-import { cn } from '../lib/utils';
-import { Button } from './button';
+import { cn } from "@/lib/utils";
+import { Button } from "@/components/button";
 import * as LucideIcons from 'lucide-react';
 
 const { 

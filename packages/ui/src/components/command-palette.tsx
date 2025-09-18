@@ -1,6 +1,6 @@
 import React from 'react';
 import { useCommandService } from '@dtinsight/molecule-core';
-import { cn } from '../lib/utils';
+import { cn } from "@/lib/utils";
 
 export interface CommandPaletteProps { className?: string }
 

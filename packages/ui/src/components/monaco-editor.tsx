@@ -1,6 +1,6 @@
 import React, { useRef } from 'react';
 import { Editor } from '@monaco-editor/react';
-import { cn } from '../lib/utils';
+import { cn } from "@/lib/utils";
 import type { IEditorTab } from '@dtinsight/molecule-core';
 
 export interface MonacoEditorProps {

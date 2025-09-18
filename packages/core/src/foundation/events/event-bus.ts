@@ -300,7 +300,7 @@ export class EventBusFactory {
 
   // 销毁所有事件总线
   static destroyAll(): void {
-    for (const [name, instance] of this.instances.entries()) {
+    for (const [_name, instance] of this.instances.entries()) {
       instance.dispose();
     }
     this.instances.clear();
@@ -315,7 +315,7 @@ export class EventBusFactory {
 // 事件装饰器
 export function EventHandler(eventType: string, options?: EventListenerOptions): MethodDecorator {
   return function (target: any, propertyKey: string | symbol, descriptor: PropertyDescriptor) {
-    const originalMethod = descriptor.value;
+    // const _originalMethod = descriptor.value;
     
     // 存储事件处理信息，用于后续自动注册
     if (!target._eventHandlers) {

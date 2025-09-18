@@ -118,10 +118,10 @@ const ViewContent: React.FC<ViewContentProps> = ({ view, activeTab, content }) =
     if (!content) return <div className="text-muted-foreground text-sm p-4">暂无标签</div>;
     
     const tags = content.match(/#[\w\u4e00-\u9fff]+/g) || [];
-    const tagCounts = tags.reduce((acc, tag) => {
-      acc[tag] = (acc[tag] || 0) + 1;
-      return acc;
-    }, {} as Record<string, number>);
+    const tagCounts: Record<string, number> = {};
+    tags.forEach(tag => {
+      tagCounts[tag] = (tagCounts[tag] || 0) + 1;
+    });
 
     const uniqueTags = Object.entries(tagCounts);
 

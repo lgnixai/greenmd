@@ -1,7 +1,7 @@
 // UI组件类型定义
 
 import type { ReactNode, CSSProperties, HTMLAttributes } from 'react';
-import type { UniqueId, IEventEmitter } from '../core/common';
+import type { UniqueId } from '../core/common';
 
 // 基础组件属性
 export interface IBaseComponentProps {

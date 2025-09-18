@@ -274,13 +274,16 @@ export function Injectable(identifier?: ServiceIdentifier) {
 }
 
 export function Inject(identifier: ServiceIdentifier): ParameterDecorator {
-  return function (target: any, propertyKey: string | symbol | undefined, parameterIndex: number) {
+  return function (_target: any, _propertyKey: string | symbol | undefined, _parameterIndex: number) {
     // 这里可以存储注入信息，用于后续的依赖解析
     // 在实际应用中，通常会结合 reflect-metadata 来实现
     // For now, we'll skip the metadata operations to avoid build errors
     // const existingTokens = Reflect.getMetadata('design:paramtypes', target) || [];
     // existingTokens[parameterIndex] = identifier;
     // Reflect.defineMetadata('design:paramtypes', existingTokens, target);
+    
+    // 暂时只是一个占位符，避免未使用参数的错误
+    void identifier;
   };
 }
 

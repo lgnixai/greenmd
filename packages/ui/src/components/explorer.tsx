@@ -84,7 +84,7 @@ const TreeNode: React.FC<TreeNodeProps> = ({
       
       {isFolder && expanded && hasChildren && (
         <div>
-          {node.children!.map((child) => (
+          {node.children!.map((child: any) => (
             <TreeNode
               key={child.id}
               node={child}

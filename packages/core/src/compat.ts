@@ -2,8 +2,7 @@
 // to satisfy existing UI imports during the refactor. All exports are typed as
 // any to avoid declaration build coupling to the legacy package types.
 
-// eslint-disable-next-line @typescript-eslint/no-var-requires
-const legacy: any = require('@dtinsight/molecule-core-legacy');
+import * as legacy from '@dtinsight/molecule-core-legacy';
 
 // Services
 export const useEditorService: any = legacy.useEditorService;

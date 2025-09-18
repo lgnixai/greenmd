@@ -42,7 +42,7 @@ export const MenuBar: React.FC<MenuBarProps> = ({ className }) => {
     }
   };
 
-  const merged = [...staticItems, ...menuItems.map(m => m.title)];
+  const merged = [...staticItems, ...menuItems.map((m: any) => m.title)];
 
   return (
     <div data-testid="menu-bar" className={cn("h-8 bg-menuBar-background border-b flex items-center px-4", className)}>
@@ -70,7 +70,7 @@ export const MenuBar: React.FC<MenuBarProps> = ({ className }) => {
       <div className="relative group">
         <button className="h-full px-3 text-sm">{t('menu_help')}</button>
         <div className="absolute hidden group-hover:block top-full left-0 bg-popover border rounded shadow min-w-[180px] p-1">
-          {themes.map(th => (
+          {themes.map((th: any) => (
             <button key={th.id} className="block w-full text-left px-3 py-1.5 text-sm hover:bg-accent" onClick={() => setTheme(th.id as any)}>
               主题：{th.label}
             </button>

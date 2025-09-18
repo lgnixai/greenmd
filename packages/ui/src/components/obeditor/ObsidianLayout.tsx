@@ -5,8 +5,7 @@ import Editor from './Editor';
 import WorkspaceManager from './WorkspaceManager';
 import { useDocuments } from '@/stores/documents';
 import { useTabManager } from '@/stores/tabManager';
-import { cn } from '@/lib/utils';
-import { FolderPlus, FilePlus, FileText, MoreHorizontal, Layout, Save } from 'lucide-react';
+import { Layout, Save } from 'lucide-react';
 import { useFileTree } from '@/stores/filetree';
 import useShortcuts from '@/hooks/useShortcuts';
 
@@ -19,16 +18,16 @@ import {
   removePanelNodeImmutable,
 } from '@lginxai/greenmd-core-legacy';
 
-interface FileNode {
-  id: string;
-  name: string;
-  type: 'file' | 'folder';
-  children?: FileNode[];
-}
+// interface FileNode {
+//   id: string;
+//   name: string;
+//   type: 'file' | 'folder';
+//   children?: FileNode[];
+// }
 
 const ObsidianLayout: React.FC = () => {
   const { createDocument, renameDocument } = useDocuments();
-  const { loadWorkspaceLayout } = useTabManager();
+  const { loadWorkspaceLayout: _loadWorkspaceLayout } = useTabManager();
   const [showWorkspaceManager, setShowWorkspaceManager] = useState(false);
   const [panelTree, setPanelTree] = useState<PanelNode>({
     id: 'root',
@@ -67,7 +66,7 @@ const ObsidianLayout: React.FC = () => {
   useEffect(() => {
     const attachDocs = (node: PanelNode) => {
       if (node.type === 'leaf' && node.tabs) {
-        node.tabs = node.tabs.map(t => ({
+        node.tabs = node.tabs.map((t: any) => ({
           ...t,
           documentId: t.documentId ?? createDocument(t.title, { content: '', language: 'markdown' })
         }));

@@ -38,7 +38,7 @@ export const NotificationCenter: React.FC<NotificationCenterProps> = ({ classNam
         {notifications.length === 0 && (
           <div className="text-xs text-muted-foreground">暂无通知</div>
         )}
-        {notifications.map((n) => (
+        {notifications.map((n: any) => (
           <div
             key={n.id}
             className={cn('rounded border p-2 flex items-start justify-between', getTypeClass(n.type))}

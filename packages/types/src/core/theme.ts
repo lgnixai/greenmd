@@ -1,6 +1,6 @@
 // 主题系统类型定义
 
-import type { UniqueId, IEventEmitter, Disposable } from './common';
+import type { IEventEmitter, Disposable } from './common';
 
 // 主题类型
 export enum ThemeType {

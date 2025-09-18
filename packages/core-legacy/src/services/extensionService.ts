@@ -1,13 +1,13 @@
-import type { IExtension, IMoleculeContext } from '../types';
+import type { IExtension, ILuckinContext } from '../types';
 
 export class ExtensionService {
   private extensions: Map<string, IExtension> = new Map();
   private activatedExtensions: Set<string> = new Set();
-  private context: IMoleculeContext | null = null;
+  private context: ILuckinContext | null = null;
 
   constructor() {}
 
-  setContext(context: IMoleculeContext) {
+  setContext(context: ILuckinContext) {
     this.context = context;
   }
 

@@ -3,7 +3,7 @@
 import { ERROR_CODES } from '../constants';
 
 // 基础错误类
-export class MoleculeError extends Error {
+export class LuckinError extends Error {
   constructor(
     public readonly code: string,
     message: string,
@@ -12,11 +12,11 @@ export class MoleculeError extends Error {
     public readonly context?: Record<string, any>
   ) {
     super(message);
-    this.name = 'MoleculeError';
+    this.name = 'LuckinError';
     
     // 保持堆栈跟踪
     if (Error.captureStackTrace) {
-      Error.captureStackTrace(this, MoleculeError);
+      Error.captureStackTrace(this, LuckinError);
     }
   }
 
@@ -38,8 +38,8 @@ export class MoleculeError extends Error {
   }
 
   // 从JSON恢复错误对象
-  static fromJSON(data: any): MoleculeError {
-    const error = new MoleculeError(
+  static fromJSON(data: any): LuckinError {
+    const error = new LuckinError(
       data.code,
       data.message,
       data.recoverable,
@@ -56,7 +56,7 @@ export class MoleculeError extends Error {
 }
 
 // 文件系统错误
-export class FileSystemError extends MoleculeError {
+export class FileSystemError extends LuckinError {
   constructor(
     code: string,
     message: string,
@@ -111,7 +111,7 @@ export class FileSystemError extends MoleculeError {
 }
 
 // 网络错误
-export class NetworkError extends MoleculeError {
+export class NetworkError extends LuckinError {
   constructor(
     code: string,
     message: string,
@@ -160,7 +160,7 @@ export class NetworkError extends MoleculeError {
 }
 
 // 扩展错误
-export class ExtensionError extends MoleculeError {
+export class ExtensionError extends LuckinError {
   constructor(
     code: string,
     message: string,
@@ -203,7 +203,7 @@ export class ExtensionError extends MoleculeError {
 }
 
 // 配置错误
-export class ConfigurationError extends MoleculeError {
+export class ConfigurationError extends LuckinError {
   constructor(
     code: string,
     message: string,
@@ -243,7 +243,7 @@ export class ConfigurationError extends MoleculeError {
 }
 
 // 主题错误
-export class ThemeError extends MoleculeError {
+export class ThemeError extends LuckinError {
   constructor(
     code: string,
     message: string,
@@ -286,7 +286,7 @@ export class ThemeError extends MoleculeError {
 }
 
 // 验证错误
-export class ValidationError extends MoleculeError {
+export class ValidationError extends LuckinError {
   constructor(
     message: string,
     public readonly field?: string,
@@ -348,11 +348,11 @@ export class ValidationError extends MoleculeError {
 
 // 错误处理工具
 export class ErrorHandler {
-  private handlers = new Map<string, (error: MoleculeError) => void>();
+  private handlers = new Map<string, (error: LuckinError) => void>();
   private globalHandler?: (error: Error) => void;
 
   // 注册特定类型的错误处理器
-  register(errorCode: string, handler: (error: MoleculeError) => void): void {
+  register(errorCode: string, handler: (error: LuckinError) => void): void {
     this.handlers.set(errorCode, handler);
   }
 
@@ -363,7 +363,7 @@ export class ErrorHandler {
 
   // 处理错误
   handle(error: Error): void {
-    if (error instanceof MoleculeError) {
+    if (error instanceof LuckinError) {
       const handler = this.handlers.get(error.code);
       if (handler) {
         try {
@@ -404,7 +404,7 @@ export class ErrorHandler {
 export const ErrorUtils = {
   // 判断是否为可恢复错误
   isRecoverable(error: Error): boolean {
-    if (error instanceof MoleculeError) {
+    if (error instanceof LuckinError) {
       return error.recoverable;
     }
     // 默认认为未知错误是可恢复的
@@ -413,7 +413,7 @@ export const ErrorUtils = {
 
   // 提取错误信息
   getMessage(error: Error): string {
-    if (error instanceof MoleculeError) {
+    if (error instanceof LuckinError) {
       return error.message;
     }
     return error.message || 'Unknown error';
@@ -421,7 +421,7 @@ export const ErrorUtils = {
 
   // 提取错误代码
   getCode(error: Error): string {
-    if (error instanceof MoleculeError) {
+    if (error instanceof LuckinError) {
       return error.code;
     }
     return ERROR_CODES.UNKNOWN;
@@ -429,19 +429,19 @@ export const ErrorUtils = {
 
   // 提取错误上下文
   getContext(error: Error): Record<string, any> | undefined {
-    if (error instanceof MoleculeError) {
+    if (error instanceof LuckinError) {
       return error.context;
     }
     return undefined;
   },
 
-  // 包装普通错误为MoleculeError
-  wrap(error: Error, code?: string, recoverable?: boolean): MoleculeError {
-    if (error instanceof MoleculeError) {
+  // 包装普通错误为LuckinError
+  wrap(error: Error, code?: string, recoverable?: boolean): LuckinError {
+    if (error instanceof LuckinError) {
       return error;
     }
     
-    return new MoleculeError(
+    return new LuckinError(
       code || ERROR_CODES.UNKNOWN,
       error.message || 'Unknown error',
       recoverable !== undefined ? recoverable : true,
@@ -450,9 +450,9 @@ export const ErrorUtils = {
   },
 
   // 创建错误链
-  chain(errors: Error[]): MoleculeError {
+  chain(errors: Error[]): LuckinError {
     if (errors.length === 0) {
-      return new MoleculeError(ERROR_CODES.UNKNOWN, 'No errors provided');
+      return new LuckinError(ERROR_CODES.UNKNOWN, 'No errors provided');
     }
     
     if (errors.length === 1) {
@@ -462,7 +462,7 @@ export const ErrorUtils = {
     const messages = errors.map(e => ErrorUtils.getMessage(e));
     const rootError = errors[0];
     
-    return new MoleculeError(
+    return new LuckinError(
       ErrorUtils.getCode(rootError),
       `Multiple errors occurred: ${messages.join('; ')}`,
       errors.some(e => ErrorUtils.isRecoverable(e)),

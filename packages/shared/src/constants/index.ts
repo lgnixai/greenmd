@@ -2,13 +2,13 @@
 
 // 应用信息
 export const APP_INFO = {
-  NAME: 'Molecule',
+  NAME: 'Luckin',
   VERSION: '3.0.0-alpha.0',
   DESCRIPTION: 'A modern Web IDE UI Framework built with React.js and shadcn/ui, inspired by VSCode.',
-  AUTHOR: 'DTStack Corporation',
+  AUTHOR: 'LGINX AI Corporation',
   LICENSE: 'MIT',
-  HOMEPAGE: 'https://github.com/DTStack/molecule',
-  REPOSITORY: 'https://github.com/DTStack/molecule.git'
+  HOMEPAGE: 'https://github.com/lginxai/luckin',
+  REPOSITORY: 'https://github.com/lginxai/luckin.git'
 } as const;
 
 // 存储键名

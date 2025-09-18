@@ -33,7 +33,7 @@ export interface IPluginManifest {
   readonly main?: string;
   readonly browser?: string;
   readonly engines: {
-    readonly molecule: string;
+    readonly luckin: string;
     readonly node?: string;
   };
   readonly activationEvents?: string[];

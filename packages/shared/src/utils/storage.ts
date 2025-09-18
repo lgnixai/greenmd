@@ -16,7 +16,7 @@ export interface IStorageAdapter {
 export class LocalStorageAdapter implements IStorageAdapter {
   private prefix: string;
 
-  constructor(prefix = 'molecule:') {
+  constructor(prefix = 'luckin:') {
     this.prefix = prefix;
   }
 
@@ -75,7 +75,7 @@ export class IndexedDBAdapter implements IStorageAdapter {
   private version: number;
   private db: IDBDatabase | null = null;
 
-  constructor(dbName = 'MoleculeDB', storeName = 'storage', version = 1) {
+  constructor(dbName = 'LuckinDB', storeName = 'storage', version = 1) {
     this.dbName = dbName;
     this.storeName = storeName;
     this.version = version;

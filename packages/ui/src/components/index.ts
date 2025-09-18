@@ -4,7 +4,7 @@ export { Input } from './input';
 export { Tabs, TabsContent, TabsList, TabsTrigger } from './tabs';
 export { Checkbox } from './checkbox';
 
-// Molecule specific components
+// Luckin specific components
 export { Workbench } from './workbench';
 export { ActivityBar } from './activity-bar';
 export { Sidebar } from './sidebar';

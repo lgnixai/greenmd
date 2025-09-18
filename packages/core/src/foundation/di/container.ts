@@ -1,7 +1,7 @@
 // 依赖注入容器实现
 
 import type { IService, Disposable } from '@lginxai/luckin-types';
-import { MoleculeError, ERROR_CODES } from '@lginxai/luckin-shared';
+import { LuckinError, ERROR_CODES } from '@lginxai/luckin-shared';
 
 // 服务标识符类型
 export type ServiceIdentifier<T = any> = string | symbol | (new (...args: any[]) => T);
@@ -44,7 +44,7 @@ export class Container implements Disposable {
     options: ServiceRegistrationOptions = {}
   ): this {
     if (this.disposed) {
-      throw new MoleculeError(
+      throw new LuckinError(
         ERROR_CODES.INVALID_ARGUMENT,
         'Cannot register service on disposed container'
       );
@@ -101,7 +101,7 @@ export class Container implements Disposable {
   // 获取服务
   get<T>(identifier: ServiceIdentifier<T>): T {
     if (this.disposed) {
-      throw new MoleculeError(
+      throw new LuckinError(
         ERROR_CODES.INVALID_ARGUMENT,
         'Cannot get service from disposed container'
       );
@@ -109,7 +109,7 @@ export class Container implements Disposable {
 
     const descriptor = this.services.get(identifier);
     if (!descriptor) {
-      throw new MoleculeError(
+      throw new LuckinError(
         ERROR_CODES.NOT_FOUND,
         `Service not registered: ${String(identifier)}`
       );
@@ -189,7 +189,7 @@ export class Container implements Disposable {
     // 检查循环依赖
     if (resolutionStack.has(identifier)) {
       const cycle = Array.from(resolutionStack).concat(identifier).map(String).join(' -> ');
-      throw new MoleculeError(
+      throw new LuckinError(
         ERROR_CODES.INVALID_ARGUMENT,
         `Circular dependency detected: ${cycle}`
       );

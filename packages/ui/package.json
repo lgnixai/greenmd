@@ -1,7 +1,7 @@
 {
   "name": "@lginxai/luckin-ui",
   "version": "3.0.0-alpha.0",
-  "description": "UI components for Molecule IDE framework based on shadcn/ui",
+  "description": "UI components for Luckin IDE framework based on shadcn/ui",
   "main": "./dist/index.js",
   "module": "./dist/index.mjs",
   "exports": {
@@ -91,13 +91,13 @@
     "react-dom": ">=18.0.0"
   },
   "keywords": [
-    "molecule",
+    "luckin",
     "ui",
     "components",
     "shadcn",
     "radix-ui",
     "tailwind"
   ],
-  "author": "DTStack Corporation",
+  "author": "",
   "license": "MIT"
 }

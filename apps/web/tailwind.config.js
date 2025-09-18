@@ -52,7 +52,7 @@ export default {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
         },
-        // Molecule specific colors
+        // Luckin specific colors
         sidebar: "hsl(var(--sidebar-background))",
         "menuBar-background": "hsl(var(--menuBar-background))",
         "statusBar-background": "hsl(var(--statusBar-background))",

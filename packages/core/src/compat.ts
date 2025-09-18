@@ -21,8 +21,8 @@ export const useThemeStore: any = legacy.useThemeStore;
 export const useEditorStore: any = legacy.useEditorStore;
 
 // Types (loose any typings)
-export type IMoleculeConfig = any;
-export type IUseMoleculeReturn = any;
+export type ILuckinConfig = any;
+export type IUseLuckinReturn = any;
 export type IEditorTab = any;
 export type PanelNode = any;
 export type IFileTreeNode = any;

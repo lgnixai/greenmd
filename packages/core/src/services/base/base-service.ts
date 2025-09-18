@@ -2,7 +2,7 @@
 
 import type { IService, IEventEmitter, Disposable } from '@lginxai/luckin-types';
 import { EventBus } from '../../foundation/events/event-bus';
-import { MoleculeError, ERROR_CODES } from '@lginxai/luckin-shared';
+import { LuckinError, ERROR_CODES } from '@lginxai/luckin-shared';
 
 // 基础服务抽象类
 export abstract class BaseService implements IService {
@@ -27,7 +27,7 @@ export abstract class BaseService implements IService {
   // 初始化服务
   async initialize(): Promise<void> {
     if (this._disposed) {
-      throw new MoleculeError(
+      throw new LuckinError(
         ERROR_CODES.INVALID_ARGUMENT,
         `Cannot initialize disposed service: ${this.id}`
       );
@@ -46,7 +46,7 @@ export abstract class BaseService implements IService {
         serviceId: this.id, 
         error 
       });
-      throw new MoleculeError(
+      throw new LuckinError(
         ERROR_CODES.UNKNOWN,
         `Failed to initialize service: ${this.id}`,
         false,
@@ -130,7 +130,7 @@ export abstract class BaseService implements IService {
     }
 
     if (this._disposed) {
-      throw new MoleculeError(
+      throw new LuckinError(
         ERROR_CODES.INVALID_ARGUMENT,
         `Service is disposed: ${this.id}`
       );
@@ -173,7 +173,7 @@ export abstract class AsyncService extends BaseService {
 
   async initialize(): Promise<void> {
     if (this._disposed) {
-      throw new MoleculeError(
+      throw new LuckinError(
         ERROR_CODES.INVALID_ARGUMENT,
         `Cannot initialize disposed service: ${this.id}`
       );
@@ -202,7 +202,7 @@ export abstract class AsyncService extends BaseService {
         serviceId: this.id, 
         error 
       });
-      throw new MoleculeError(
+      throw new LuckinError(
         ERROR_CODES.UNKNOWN,
         `Failed to initialize async service: ${this.id}`,
         false,
@@ -231,7 +231,7 @@ export abstract class ConfigurableService<T = any> extends BaseService {
   // 更新配置
   updateConfig(config: Partial<T>): void {
     if (this._disposed) {
-      throw new MoleculeError(
+      throw new LuckinError(
         ERROR_CODES.INVALID_ARGUMENT,
         `Cannot update config of disposed service: ${this.id}`
       );
@@ -251,7 +251,7 @@ export abstract class ConfigurableService<T = any> extends BaseService {
   // 重置配置
   resetConfig(config: T): void {
     if (this._disposed) {
-      throw new MoleculeError(
+      throw new LuckinError(
         ERROR_CODES.INVALID_ARGUMENT,
         `Cannot reset config of disposed service: ${this.id}`
       );

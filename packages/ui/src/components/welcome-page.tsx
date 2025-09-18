@@ -8,7 +8,7 @@ export interface WelcomePageProps {
 export const WelcomePage: React.FC<WelcomePageProps> = ({ className }) => {
   return (
     <div className={cn("flex-1 flex flex-col items-center justify-center bg-background", className)}>
-      {/* Molecule Logo */}
+      {/* Luckin Logo */}
       <div className="mb-8">
         <div className="relative">
           {/* 分子结构图 - 使用 CSS 创建类似原版的点阵效果 */}
@@ -42,9 +42,9 @@ export const WelcomePage: React.FC<WelcomePageProps> = ({ className }) => {
         </div>
       </div>
       
-      {/* Molecule Text */}
+      {/* Luckin Text */}
       <div className="text-center">
-        <h1 className="text-4xl font-light text-foreground mb-4">Molecule</h1>
+        <h1 className="text-4xl font-light text-foreground mb-4">Luckin</h1>
         <p className="text-muted-foreground text-lg">
           A modern Web IDE framework built with React.js and shadcn/ui
         </p>
@@ -52,9 +52,9 @@ export const WelcomePage: React.FC<WelcomePageProps> = ({ className }) => {
       
       {/* Welcome Content */}
       <div className="mt-12 max-w-2xl text-center">
-        <h2 className="text-xl font-semibold text-foreground mb-4">Welcome to Molecule 3.x</h2>
+        <h2 className="text-xl font-semibold text-foreground mb-4">Welcome to Luckin 3.x</h2>
         <div className="text-muted-foreground space-y-2">
-          <p>This is a completely rewritten version of the Molecule IDE framework.</p>
+          <p>This is a completely rewritten version of the Luckin IDE framework.</p>
           <p>Built with modern technologies:</p>
           <div className="flex flex-wrap justify-center gap-2 mt-4">
             <span className="px-3 py-1 bg-primary/10 text-primary rounded-full text-sm">React 18</span>

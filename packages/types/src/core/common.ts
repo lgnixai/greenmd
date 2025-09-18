@@ -62,7 +62,7 @@ export interface IError {
   readonly recoverable: boolean;
 }
 
-export class MoleculeError extends Error implements IError {
+export class LuckinError extends Error implements IError {
   constructor(
     public readonly code: string,
     message: string,
@@ -70,7 +70,7 @@ export class MoleculeError extends Error implements IError {
     public readonly cause?: Error
   ) {
     super(message);
-    this.name = 'MoleculeError';
+    this.name = 'LuckinError';
   }
 }
 

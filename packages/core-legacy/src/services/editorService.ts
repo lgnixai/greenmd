@@ -61,7 +61,7 @@ interface EditorServiceState extends EditorState {
   activateTabInPanel: (panelId: string, tabId: string) => void;
 }
 
-const defaultContent = `// Welcome to Molecule 3.x Editor
+const defaultContent = `// Welcome to Luckin 3.x Editor
 // This is a modern Web IDE built with React and Monaco Editor
 
 import React from 'react';
@@ -91,11 +91,11 @@ function App() {
 
 export default App;`;
 
-const welcomeContent = `# Welcome to Molecule 3.x
+const welcomeContent = `# Welcome to Luckin 3.x
 
 ## 🚀 Modern Web IDE Framework
 
-Molecule 3.x is a completely rewritten version of the Molecule IDE framework, built with modern technologies:
+Luckin 3.x is a completely rewritten version of the Luckin IDE framework, built with modern technologies:
 
 ### ✨ Key Features
 - **Modern UI**: Built with shadcn/ui and Tailwind CSS
@@ -451,7 +451,7 @@ export const useEditorService = create<EditorServiceState>()(
           .find(tab => tab.id === 'welcome-tab');
         
         if (welcomeTab) {
-          welcomeTab.content = `# Welcome to Molecule 3.x - Updated!
+          welcomeTab.content = `# Welcome to Luckin 3.x - Updated!
 
 ## 🎉 Latest Updates
 - **Version**: 3.0.0

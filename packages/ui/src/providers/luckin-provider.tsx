@@ -1,25 +1,25 @@
 import React, { createContext, useContext, useMemo } from 'react';
 import { ExtensionService } from '@lginxai/luckin-core-legacy';
-import type { IMoleculeConfig, IUseMoleculeReturn } from '@lginxai/luckin-core';
+import type { ILuckinConfig, IUseLuckinReturn } from '@lginxai/luckin-core';
 
-interface MoleculeProviderProps {
-  config: IMoleculeConfig;
+interface LuckinProviderProps {
+  config: ILuckinConfig;
   children: React.ReactNode;
 }
 
 // Create a mock context for now - this will be properly implemented
-const MoleculeContext = createContext<IUseMoleculeReturn | null>(null);
+const LuckinContext = createContext<IUseLuckinReturn | null>(null);
 
-export const MoleculeProvider: React.FC<MoleculeProviderProps> = ({ 
+export const LuckinProvider: React.FC<LuckinProviderProps> = ({ 
   config, 
   children 
 }) => {
-  const context = useMemo<IUseMoleculeReturn>(() => {
+  const context = useMemo<IUseLuckinReturn>(() => {
     // Mock implementation - will be replaced with real services
     const extensionService = new ExtensionService();
     
     return {
-      molecule: {
+      luckin: {
         locale: {
           localize: (key: string, defaultValue?: string) => defaultValue || key,
         },
@@ -54,16 +54,16 @@ export const MoleculeProvider: React.FC<MoleculeProviderProps> = ({
   }, [config]);
 
   return (
-    <MoleculeContext.Provider value={context}>
+    <LuckinContext.Provider value={context}>
       {children}
-    </MoleculeContext.Provider>
+    </LuckinContext.Provider>
   );
 };
 
-export const useMolecule = (): IUseMoleculeReturn => {
-  const context = useContext(MoleculeContext);
+export const useLuckin = (): IUseLuckinReturn => {
+  const context = useContext(LuckinContext);
   if (!context) {
-    throw new Error('useMolecule must be used within a MoleculeProvider');
+    throw new Error('useLuckin must be used within a LuckinProvider');
   }
   return context;
 };

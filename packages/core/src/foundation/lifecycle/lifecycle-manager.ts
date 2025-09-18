@@ -3,7 +3,7 @@
 import { LifecyclePhase } from '@lginxai/luckin-types';
 import type { ILifecycle, IEventEmitter, Disposable } from '@lginxai/luckin-types';
 import { EventBus } from '../events/event-bus';
-import { MoleculeError, ERROR_CODES } from '@lginxai/luckin-shared';
+import { LuckinError, ERROR_CODES } from '@lginxai/luckin-shared';
 
 // 生命周期钩子函数类型
 export type LifecycleHook = () => Promise<void> | void;
@@ -74,7 +74,7 @@ export class LifecycleManager implements ILifecycleService {
   // 注册关闭钩子
   onShutdown(hook: LifecycleHook): Disposable {
     if (this.disposed) {
-      throw new MoleculeError(
+      throw new LuckinError(
         ERROR_CODES.INVALID_ARGUMENT,
         'Cannot register hook on disposed lifecycle manager'
       );
@@ -95,14 +95,14 @@ export class LifecycleManager implements ILifecycleService {
   // 设置生命周期阶段
   async setPhase(phase: LifecyclePhase): Promise<void> {
     if (this.disposed) {
-      throw new MoleculeError(
+      throw new LuckinError(
         ERROR_CODES.INVALID_ARGUMENT,
         'Cannot set phase on disposed lifecycle manager'
       );
     }
 
     if (this.transitioning) {
-      throw new MoleculeError(
+      throw new LuckinError(
         ERROR_CODES.INVALID_ARGUMENT,
         'Lifecycle transition already in progress'
       );
@@ -113,7 +113,7 @@ export class LifecycleManager implements ILifecycleService {
     }
 
     if (!this.canTransitionTo(phase)) {
-      throw new MoleculeError(
+      throw new LuckinError(
         ERROR_CODES.INVALID_ARGUMENT,
         `Invalid lifecycle transition from ${this._phase} to ${phase}`
       );
@@ -190,7 +190,7 @@ export class LifecycleManager implements ILifecycleService {
     }
 
     if (!this.canTransitionTo(phase) && this._phase < phase) {
-      throw new MoleculeError(
+      throw new LuckinError(
         ERROR_CODES.INVALID_ARGUMENT,
         `Cannot wait for phase ${phase} from current phase ${this._phase}`
       );
@@ -205,7 +205,7 @@ export class LifecycleManager implements ILifecycleService {
   // 注册钩子
   private registerHook(phase: LifecyclePhase, hook: LifecycleHook): Disposable {
     if (this.disposed) {
-      throw new MoleculeError(
+      throw new LuckinError(
         ERROR_CODES.INVALID_ARGUMENT,
         'Cannot register hook on disposed lifecycle manager'
       );
@@ -213,7 +213,7 @@ export class LifecycleManager implements ILifecycleService {
 
     const phaseHooks = this.hooks.get(phase);
     if (!phaseHooks) {
-      throw new MoleculeError(
+      throw new LuckinError(
         ERROR_CODES.INVALID_ARGUMENT,
         `Invalid lifecycle phase: ${phase}`
       );
@@ -272,7 +272,7 @@ export class LifecycleManager implements ILifecycleService {
 
     // 如果有错误，抛出聚合错误
     if (errors.length > 0) {
-      throw new MoleculeError(
+      throw new LuckinError(
         ERROR_CODES.UNKNOWN,
         `${errors.length} error(s) occurred during lifecycle phase ${phase}`,
         false,

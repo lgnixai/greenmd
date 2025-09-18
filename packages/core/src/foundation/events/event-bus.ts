@@ -1,7 +1,7 @@
 // 事件总线实现
 
 import type { IEventEmitter, IEvent, Disposable } from '@lginxai/luckin-types';
-import { MoleculeError, ERROR_CODES } from '@lginxai/luckin-shared';
+import { LuckinError, ERROR_CODES } from '@lginxai/luckin-shared';
 
 // 事件监听器类型
 export type EventListener<T = any> = (event: IEvent<T>) => void;
@@ -32,7 +32,7 @@ export class EventBus implements IEventEmitter, Disposable {
   // 添加事件监听器
   on<T = any>(eventType: string, listener: EventListener<T>, options: EventListenerOptions = {}): Disposable {
     if (this.disposed) {
-      throw new MoleculeError(
+      throw new LuckinError(
         ERROR_CODES.INVALID_ARGUMENT,
         'Cannot add listener to disposed EventBus'
       );
@@ -188,7 +188,7 @@ export class EventBus implements IEventEmitter, Disposable {
       if (timeout && timeout > 0) {
         timeoutId = setTimeout(() => {
           cleanup();
-          reject(new MoleculeError(
+          reject(new LuckinError(
             ERROR_CODES.TIMEOUT,
             `Event '${eventType}' not received within ${timeout}ms`
           ));

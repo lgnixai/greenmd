@@ -1,4 +1,4 @@
-// Core types for Molecule 3.x
+// Core types for Luckin 3.x
 export type UniqueId = string | number;
 
 export interface IMenuItemProps {
@@ -27,7 +27,7 @@ export interface IExtension {
   main?: string;
   contributes?: IContribute;
   activationEvents?: string[];
-  activate?: (context: IMoleculeContext, monaco: any) => void | Promise<void>;
+  activate?: (context: ILuckinContext, monaco: any) => void | Promise<void>;
   deactivate?: () => void | Promise<void>;
 }
 
@@ -86,7 +86,7 @@ export interface ICommand {
   icon?: string;
 }
 
-export interface IMoleculeContext {
+export interface ILuckinContext {
   // Core services
   locale: any;
   builtin: any;
@@ -237,8 +237,8 @@ export interface IEvent {
 }
 
 // Hook types
-export interface IUseMoleculeReturn {
-  molecule: IMoleculeContext;
+export interface IUseLuckinReturn {
+  luckin: ILuckinContext;
   monaco: any;
   localize: (key: string, defaultValue?: string) => string;
   modules: any;
@@ -246,7 +246,7 @@ export interface IUseMoleculeReturn {
 }
 
 // Configuration types
-export interface IMoleculeConfig {
+export interface ILuckinConfig {
   extensions?: IExtension[];
   defaultLocale?: string;
   defaultColorTheme?: string;

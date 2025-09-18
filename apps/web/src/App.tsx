@@ -1,10 +1,10 @@
-import { MoleculeProvider, Workbench, CommandPalette } from '@lginxai/luckin-ui';
+import { LuckinProvider, Workbench, CommandPalette } from '@lginxai/luckin-ui';
 import { useEffect } from 'react';
 import { useCommandService } from '@lginxai/luckin-core-legacy';
-import type { IMoleculeConfig } from '@lginxai/luckin-core';
+import type { ILuckinConfig } from '@lginxai/luckin-core';
 import './index.css';
 
-const config: IMoleculeConfig = {
+const config: ILuckinConfig = {
   extensions: [],
   defaultLocale: 'en-US',
   defaultColorTheme: 'default-dark',
@@ -31,12 +31,12 @@ function App() {
   }, [register, togglePalette]);
 
   return (
-    <MoleculeProvider config={config}>
+    <LuckinProvider config={config}>
       <Workbench className="">
         <div />
       </Workbench>
       <CommandPalette className="" />
-    </MoleculeProvider>
+    </LuckinProvider>
   );
 }
 

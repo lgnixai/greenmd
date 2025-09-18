@@ -1,7 +1,7 @@
 {
   "name": "@lginxai/luckin-web",
   "version": "3.0.0-alpha.0",
-  "description": "Web application for Molecule IDE",
+  "description": "Web application for Luckin IDE",
   "private": true,
   "type": "module",
   "scripts": {

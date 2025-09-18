@@ -1,2 +1,2 @@
-export { useMolecule, MoleculeContext } from './useMolecule';
+export { useLuckin, LuckinContext } from './useLuckin';
 

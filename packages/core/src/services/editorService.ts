@@ -1,6 +1,13 @@
 import { create } from 'zustand';
 import { immer } from 'zustand/middleware/immer';
 import type { PanelNode, TabType } from '../types';
+import {
+  findFirstLeaf,
+  addTabToPanelImmutable,
+  activateTabInPanelImmutable,
+  splitPanelImmutable,
+  closeTabInPanelImmutable,
+} from '../utils/panelTree';
 
 export interface EditorTab {
   id: string;
@@ -178,29 +185,23 @@ export const useEditorService = create<EditorServiceState>()(
       });
       // Mirror to Obsidian panel tree: open in active leaf (no split)
       try {
-        const { panelTree, initializePanelTree, addTabToPanel, activateTabInPanel } = get() as any;
+        const { panelTree, initializePanelTree } = get() as any;
         if (!panelTree) initializePanelTree();
-        const tree = (get() as any).panelTree as any;
-        const findActiveLeaf = (node: any): any => {
-          if (node.type === 'leaf' && node.tabs?.some((t: any) => t.isActive)) return node;
-          for (const child of node.children || []) {
-            const res = findActiveLeaf(child);
+        const tree = (get() as any).panelTree as PanelNode;
+        const activeLeaf = (function findActive(n: PanelNode | null): PanelNode | null {
+          if (!n) return null;
+          if (n.type === 'leaf' && (n as any).tabs?.some((t: any) => t.isActive)) return n;
+          for (const c of n.children || []) {
+            const res = findActive(c);
             if (res) return res;
           }
           return null;
-        };
-        const findFirstLeaf = (node: any): any => {
-          if (node.type === 'leaf') return node;
-          for (const child of node.children || []) {
-            const res = findFirstLeaf(child);
-            if (res) return res;
-          }
-          return null;
-        };
-        const leaf = findActiveLeaf(tree) || findFirstLeaf(tree);
+        })(tree);
+        const leaf = activeLeaf || findFirstLeaf(tree);
         if (leaf) {
-          addTabToPanel(leaf.id, { id: tabId, title: name, isActive: true });
-          activateTabInPanel(leaf.id, tabId);
+          const next = addTabToPanelImmutable(tree, leaf.id, { id: tabId, title: name, isActive: true });
+          const activated = activateTabInPanelImmutable(next, leaf.id, tabId);
+          set((state) => { (state as any).panelTree = activated; });
         }
       } catch {}
 
@@ -232,52 +233,39 @@ export const useEditorService = create<EditorServiceState>()(
       });
       // Mirror to Obsidian panel tree: split active leaf horizontally and open on right
       try {
-        const {
-          panelTree,
-          initializePanelTree,
-          splitPanel: splitPanelAction,
-          addTabToPanel,
-          activateTabInPanel,
-        } = get() as any;
+        const { panelTree, initializePanelTree } = get() as any;
         if (!panelTree) initializePanelTree();
-        const treeBefore = (get() as any).panelTree as any;
-        const findActiveLeaf = (node: any): any => {
-          if (node.type === 'leaf' && node.tabs?.some((t: any) => t.isActive)) return node;
-          for (const child of node.children || []) {
-            const res = findActiveLeaf(child);
+        const treeBefore = (get() as any).panelTree as PanelNode;
+        const activeLeaf = (function findActive(n: PanelNode | null): PanelNode | null {
+          if (!n) return null;
+          if (n.type === 'leaf' && (n as any).tabs?.some((t: any) => t.isActive)) return n;
+          for (const c of n.children || []) {
+            const res = findActive(c);
             if (res) return res;
           }
           return null;
-        };
-        const findFirstLeaf = (node: any): any => {
-          if (node.type === 'leaf') return node;
-          for (const child of node.children || []) {
-            const res = findFirstLeaf(child);
-            if (res) return res;
-          }
-          return null;
-        };
-        const activeLeaf = findActiveLeaf(treeBefore) || findFirstLeaf(treeBefore);
+        })(treeBefore) || findFirstLeaf(treeBefore);
         if (activeLeaf) {
           const panelId = activeLeaf.id;
-          splitPanelAction(panelId, 'horizontal');
-          const treeAfter = (get() as any).panelTree as any;
-          const findNodeById = (node: any, id: string): any => {
-            if (node.id === id) return node;
-            for (const child of node.children || []) {
-              const res = findNodeById(child, id);
+          const split = splitPanelImmutable(treeBefore, panelId, 'horizontal', () => ({ id: tabId, title: `Diff: ${leftFile} ↔ ${rightFile}`, isActive: true }));
+          // pick a right child leaf id after split
+          const splitNode = (function byId(n: PanelNode | null, id: string): PanelNode | null {
+            if (!n) return null;
+            if (n.id === id) return n;
+            for (const c of n.children || []) {
+              const res = byId(c, id);
               if (res) return res;
             }
             return null;
-          };
-          const splitNode = findNodeById(treeAfter, panelId);
+          })(split, panelId);
           let rightLeafId = panelId;
           if (splitNode && Array.isArray(splitNode.children)) {
             const rightChild = splitNode.children.find((c: any) => c.id !== `${panelId}-a`) || splitNode.children[1];
             if (rightChild) rightLeafId = rightChild.id;
           }
-          addTabToPanel(rightLeafId, { id: tabId, title: `Diff: ${leftFile} ↔ ${rightFile}`, isActive: true });
-          activateTabInPanel(rightLeafId, tabId);
+          const withTab = addTabToPanelImmutable(split, rightLeafId, { id: tabId, title: `Diff: ${leftFile} ↔ ${rightFile}`, isActive: true });
+          const activated = activateTabInPanelImmutable(withTab, rightLeafId, tabId);
+          set((state) => { (state as any).panelTree = activated; });
         }
       } catch {}
 
@@ -309,20 +297,14 @@ export const useEditorService = create<EditorServiceState>()(
       });
       // Mirror to Obsidian panel tree
       try {
-        const { panelTree, initializePanelTree, addTabToPanel, activateTabInPanel } = get() as any;
+        const { panelTree, initializePanelTree } = get() as any;
         if (!panelTree) initializePanelTree();
-        const tree = (get() as any).panelTree as any;
-        const findFirstLeafId = (node: any): string | null => {
-          if (node.type === 'leaf') return node.id;
-          for (const child of node.children || []) {
-            const res = findFirstLeafId(child);
-            if (res) return res;
-          }
-          return null;
-        };
-        const leafId = findFirstLeafId(tree) || 'left';
-        addTabToPanel(leafId, { id: tabId, title: `Custom: ${type}`, isActive: true });
-        activateTabInPanel(leafId, tabId);
+        const tree = (get() as any).panelTree as PanelNode;
+        const leaf = findFirstLeaf(tree);
+        const leafId = (leaf && leaf.id) || 'left';
+        const withTab = addTabToPanelImmutable(tree, leafId, { id: tabId, title: `Custom: ${type}`, isActive: true });
+        const activated = activateTabInPanelImmutable(withTab, leafId, tabId);
+        set((state) => { (state as any).panelTree = activated; });
       } catch {}
 
       return tabId;
@@ -355,21 +337,15 @@ export const useEditorService = create<EditorServiceState>()(
       });
       // Mirror to Obsidian panel tree
       try {
-        const { panelTree, initializePanelTree, addTabToPanel, activateTabInPanel } = get() as any;
+        const { panelTree, initializePanelTree } = get() as any;
         if (!panelTree) initializePanelTree();
-        const tree = (get() as any).panelTree as any;
-        const findFirstLeafId = (node: any): string | null => {
-          if (node.type === 'leaf') return node.id;
-          for (const child of node.children || []) {
-            const res = findFirstLeafId(child);
-            if (res) return res;
-          }
-          return null;
-        };
-        const leafId = findFirstLeafId(tree) || 'left';
+        const tree = (get() as any).panelTree as PanelNode;
+        const leaf = findFirstLeaf(tree);
+        const leafId = (leaf && leaf.id) || 'left';
         const fileName = path.split('/').pop() || 'untitled';
-        addTabToPanel(leafId, { id: tabId, title: fileName, isActive: true });
-        activateTabInPanel(leafId, tabId);
+        const withTab = addTabToPanelImmutable(tree, leafId, { id: tabId, title: fileName, isActive: true });
+        const activated = activateTabInPanelImmutable(withTab, leafId, tabId);
+        set((state) => { (state as any).panelTree = activated; });
       } catch {}
 
       return tabId;
@@ -395,14 +371,19 @@ export const useEditorService = create<EditorServiceState>()(
       });
       // Mirror close into panel tree
       try {
-        const tree = (get() as any).panelTree as any;
-        const closeIn = (node: any) => {
-          if (node.type === 'leaf' && node.tabs?.some((t: any) => t.id === tabId)) {
-            (get() as any).closeTabInPanel(node.id, tabId);
-          }
-          for (const child of node.children || []) closeIn(child);
-        };
-        if (tree) closeIn(tree);
+        const tree = (get() as any).panelTree as PanelNode;
+        if (tree) {
+          const next = (function closeInAll(node: PanelNode): PanelNode {
+            if (node.type === 'leaf') {
+              return closeTabInPanelImmutable(node as any, node.id, tabId);
+            }
+            if (node.children) {
+              return { ...node, children: node.children.map(closeInAll) } as PanelNode;
+            }
+            return node;
+          })(tree);
+          set((state) => { (state as any).panelTree = next; });
+        }
       } catch {}
     },
 
@@ -419,16 +400,18 @@ export const useEditorService = create<EditorServiceState>()(
       });
       // Mirror activation into panel tree
       try {
-        const tree = (get() as any).panelTree as any;
-        const activate = (node: any) => {
-          if (node.type === 'leaf' && node.tabs) {
-            if (node.tabs.some((t: any) => t.id === tabId)) {
-              (get() as any).activateTabInPanel(node.id, tabId);
-            }
+        const tree = (get() as any).panelTree as PanelNode;
+        const activateEverywhere = (node: PanelNode): PanelNode => {
+          if (node.type === 'leaf' && (node as any).tabs?.some((t: any) => t.id === tabId)) {
+            return activateTabInPanelImmutable(node, node.id, tabId);
           }
-          for (const child of node.children || []) activate(child);
+          if (node.children) return { ...node, children: node.children.map(activateEverywhere) } as PanelNode;
+          return node;
         };
-        if (tree) activate(tree);
+        if (tree) {
+          const next = activateEverywhere(tree);
+          set((state) => { (state as any).panelTree = next; });
+        }
       } catch {}
     },
 

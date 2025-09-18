@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { immer } from 'zustand/middleware/immer';
+import type { PanelNode, TabType } from '../types';
 
 export interface EditorTab {
   id: string;
@@ -23,6 +24,8 @@ export interface EditorState {
   currentGroupId?: string;
   isFullscreen: boolean;
   loading: boolean;
+  // Obsidian-style panel tree state
+  panelTree?: PanelNode;
 }
 
 interface EditorServiceState extends EditorState {
@@ -43,6 +46,12 @@ interface EditorServiceState extends EditorState {
   setActiveGroup: (groupId: string) => void;
   createNewGroup: () => string;
   moveTabToGroup: (tabId: string, targetGroupId: string) => void;
+  // Obsidian-style panel APIs (kept additive to preserve compatibility)
+  initializePanelTree: (tree?: PanelNode) => void;
+  splitPanel: (panelId: string, direction: 'horizontal' | 'vertical') => void;
+  addTabToPanel: (panelId: string, tab: TabType) => void;
+  closeTabInPanel: (panelId: string, tabId: string) => void;
+  activateTabInPanel: (panelId: string, tabId: string) => void;
 }
 
 const defaultContent = `// Welcome to Molecule 3.x Editor
@@ -126,6 +135,22 @@ export const useEditorService = create<EditorServiceState>()(
     currentGroupId: 'main-group',
     isFullscreen: false,
     loading: false,
+    panelTree: {
+      id: 'root',
+      type: 'split',
+      direction: 'horizontal',
+      children: [
+        {
+          id: 'left',
+          type: 'leaf',
+          tabs: [
+            { id: '1', title: '新标签页', isActive: true },
+          ],
+          size: 35,
+          minSize: 20,
+        },
+      ],
+    },
 
     createEditor: (name, content = '', language = 'typescript') => {
       const tabId = `editor-${Date.now()}`;
@@ -151,7 +176,34 @@ export const useEditorService = create<EditorServiceState>()(
           group.activeTabId = tabId;
         }
       });
-      
+      // Mirror to Obsidian panel tree: open in active leaf (no split)
+      try {
+        const { panelTree, initializePanelTree, addTabToPanel, activateTabInPanel } = get() as any;
+        if (!panelTree) initializePanelTree();
+        const tree = (get() as any).panelTree as any;
+        const findActiveLeaf = (node: any): any => {
+          if (node.type === 'leaf' && node.tabs?.some((t: any) => t.isActive)) return node;
+          for (const child of node.children || []) {
+            const res = findActiveLeaf(child);
+            if (res) return res;
+          }
+          return null;
+        };
+        const findFirstLeaf = (node: any): any => {
+          if (node.type === 'leaf') return node;
+          for (const child of node.children || []) {
+            const res = findFirstLeaf(child);
+            if (res) return res;
+          }
+          return null;
+        };
+        const leaf = findActiveLeaf(tree) || findFirstLeaf(tree);
+        if (leaf) {
+          addTabToPanel(leaf.id, { id: tabId, title: name, isActive: true });
+          activateTabInPanel(leaf.id, tabId);
+        }
+      } catch {}
+
       return tabId;
     },
 
@@ -178,7 +230,57 @@ export const useEditorService = create<EditorServiceState>()(
           group.activeTabId = tabId;
         }
       });
-      
+      // Mirror to Obsidian panel tree: split active leaf horizontally and open on right
+      try {
+        const {
+          panelTree,
+          initializePanelTree,
+          splitPanel: splitPanelAction,
+          addTabToPanel,
+          activateTabInPanel,
+        } = get() as any;
+        if (!panelTree) initializePanelTree();
+        const treeBefore = (get() as any).panelTree as any;
+        const findActiveLeaf = (node: any): any => {
+          if (node.type === 'leaf' && node.tabs?.some((t: any) => t.isActive)) return node;
+          for (const child of node.children || []) {
+            const res = findActiveLeaf(child);
+            if (res) return res;
+          }
+          return null;
+        };
+        const findFirstLeaf = (node: any): any => {
+          if (node.type === 'leaf') return node;
+          for (const child of node.children || []) {
+            const res = findFirstLeaf(child);
+            if (res) return res;
+          }
+          return null;
+        };
+        const activeLeaf = findActiveLeaf(treeBefore) || findFirstLeaf(treeBefore);
+        if (activeLeaf) {
+          const panelId = activeLeaf.id;
+          splitPanelAction(panelId, 'horizontal');
+          const treeAfter = (get() as any).panelTree as any;
+          const findNodeById = (node: any, id: string): any => {
+            if (node.id === id) return node;
+            for (const child of node.children || []) {
+              const res = findNodeById(child, id);
+              if (res) return res;
+            }
+            return null;
+          };
+          const splitNode = findNodeById(treeAfter, panelId);
+          let rightLeafId = panelId;
+          if (splitNode && Array.isArray(splitNode.children)) {
+            const rightChild = splitNode.children.find((c: any) => c.id !== `${panelId}-a`) || splitNode.children[1];
+            if (rightChild) rightLeafId = rightChild.id;
+          }
+          addTabToPanel(rightLeafId, { id: tabId, title: `Diff: ${leftFile} ↔ ${rightFile}`, isActive: true });
+          activateTabInPanel(rightLeafId, tabId);
+        }
+      } catch {}
+
       return tabId;
     },
 
@@ -205,7 +307,24 @@ export const useEditorService = create<EditorServiceState>()(
           group.activeTabId = tabId;
         }
       });
-      
+      // Mirror to Obsidian panel tree
+      try {
+        const { panelTree, initializePanelTree, addTabToPanel, activateTabInPanel } = get() as any;
+        if (!panelTree) initializePanelTree();
+        const tree = (get() as any).panelTree as any;
+        const findFirstLeafId = (node: any): string | null => {
+          if (node.type === 'leaf') return node.id;
+          for (const child of node.children || []) {
+            const res = findFirstLeafId(child);
+            if (res) return res;
+          }
+          return null;
+        };
+        const leafId = findFirstLeafId(tree) || 'left';
+        addTabToPanel(leafId, { id: tabId, title: `Custom: ${type}`, isActive: true });
+        activateTabInPanel(leafId, tabId);
+      } catch {}
+
       return tabId;
     },
 
@@ -234,7 +353,25 @@ export const useEditorService = create<EditorServiceState>()(
           group.activeTabId = tabId;
         }
       });
-      
+      // Mirror to Obsidian panel tree
+      try {
+        const { panelTree, initializePanelTree, addTabToPanel, activateTabInPanel } = get() as any;
+        if (!panelTree) initializePanelTree();
+        const tree = (get() as any).panelTree as any;
+        const findFirstLeafId = (node: any): string | null => {
+          if (node.type === 'leaf') return node.id;
+          for (const child of node.children || []) {
+            const res = findFirstLeafId(child);
+            if (res) return res;
+          }
+          return null;
+        };
+        const leafId = findFirstLeafId(tree) || 'left';
+        const fileName = path.split('/').pop() || 'untitled';
+        addTabToPanel(leafId, { id: tabId, title: fileName, isActive: true });
+        activateTabInPanel(leafId, tabId);
+      } catch {}
+
       return tabId;
     },
 
@@ -256,6 +393,17 @@ export const useEditorService = create<EditorServiceState>()(
           }
         });
       });
+      // Mirror close into panel tree
+      try {
+        const tree = (get() as any).panelTree as any;
+        const closeIn = (node: any) => {
+          if (node.type === 'leaf' && node.tabs?.some((t: any) => t.id === tabId)) {
+            (get() as any).closeTabInPanel(node.id, tabId);
+          }
+          for (const child of node.children || []) closeIn(child);
+        };
+        if (tree) closeIn(tree);
+      } catch {}
     },
 
     switchTab: (tabId) => {
@@ -269,6 +417,19 @@ export const useEditorService = create<EditorServiceState>()(
           });
         });
       });
+      // Mirror activation into panel tree
+      try {
+        const tree = (get() as any).panelTree as any;
+        const activate = (node: any) => {
+          if (node.type === 'leaf' && node.tabs) {
+            if (node.tabs.some((t: any) => t.id === tabId)) {
+              (get() as any).activateTabInPanel(node.id, tabId);
+            }
+          }
+          for (const child of node.children || []) activate(child);
+        };
+        if (tree) activate(tree);
+      } catch {}
     },
 
     updateTabContent: (tabId, content) => {
@@ -404,6 +565,106 @@ Happy coding! 🎉`;
           }
         }
       });
-    }
+    },
+
+    // ---------- Obsidian-style panel APIs ----------
+    initializePanelTree: (tree) => {
+      set((state) => {
+        state.panelTree =
+          tree || {
+            id: 'root',
+            type: 'split',
+            direction: 'horizontal',
+            children: [
+              {
+                id: 'left',
+                type: 'leaf',
+                tabs: [{ id: '1', title: '新标签页', isActive: true }],
+                size: 35,
+                minSize: 20,
+              },
+            ],
+          };
+      });
+    },
+
+    splitPanel: (panelId, direction) => {
+      set((state) => {
+        const findPanel = (node: PanelNode): PanelNode | null => {
+          if (node.id === panelId) return node;
+          if (node.children) {
+            for (const child of node.children) {
+              const found = findPanel(child);
+              if (found) return found;
+            }
+          }
+          return null;
+        };
+        if (!state.panelTree) return;
+        const target = findPanel(state.panelTree);
+        if (target && target.type === 'leaf') {
+          const newLeafId = `${panelId}-split-${Date.now()}`;
+          const newLeaf: PanelNode = { id: newLeafId, type: 'leaf', tabs: [] };
+          target.type = 'split';
+          target.direction = direction;
+          target.children = [
+            { id: `${panelId}-a`, type: 'leaf', tabs: target.tabs || [] },
+            newLeaf,
+          ];
+          delete (target as any).tabs;
+        }
+      });
+    },
+
+    addTabToPanel: (panelId, tab) => {
+      set((state) => {
+        const visit = (node: PanelNode): boolean => {
+          if (node.id === panelId && node.type === 'leaf') {
+            node.tabs = node.tabs || [];
+            node.tabs.forEach((t) => (t.isActive = false));
+            node.tabs.push({ ...tab, isActive: true });
+            return true;
+          }
+          if (node.children) return node.children.some(visit);
+          return false;
+        };
+        if (state.panelTree) visit(state.panelTree);
+      });
+    },
+
+    closeTabInPanel: (panelId, tabId) => {
+      set((state) => {
+        const visit = (node: PanelNode): boolean => {
+          if (node.id === panelId && node.type === 'leaf' && node.tabs) {
+            const idx = node.tabs.findIndex((t) => t.id === tabId);
+            if (idx !== -1) {
+              const wasActive = !!node.tabs[idx].isActive;
+              node.tabs.splice(idx, 1);
+              if (wasActive && node.tabs.length > 0) {
+                node.tabs[node.tabs.length - 1].isActive = true;
+              }
+            }
+            return true;
+          }
+          if (node.children) return node.children.some(visit);
+          return false;
+        };
+        if (state.panelTree) visit(state.panelTree);
+      });
+    },
+
+    activateTabInPanel: (panelId, tabId) => {
+      set((state) => {
+        const visit = (node: PanelNode): boolean => {
+          if (node.id === panelId && node.type === 'leaf' && node.tabs) {
+            node.tabs.forEach((t) => (t.isActive = t.id === tabId));
+            return true;
+          }
+          if (node.children) return node.children.some(visit);
+          return false;
+        };
+        if (state.panelTree) visit(state.panelTree);
+      });
+    },
   }))
 );

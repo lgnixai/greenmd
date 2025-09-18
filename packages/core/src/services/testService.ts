@@ -179,24 +179,110 @@ async function executeTestLogic(testId: string, testName: string): Promise<TestE
       return { success: true, output: '✅ 移除菜单项' };
     }
       
-    // Editor Tree Tests
-    case 'add-toolbar':
-      return {
-        success: true,
-        output: `✅ 工具栏添加成功\n- 工具栏ID: toolbar_${Date.now()}\n- 按钮数量: 5\n- 位置: 顶部\n- 状态: 已激活`
-      };
-      
-    case 'update-toolbar':
-      return {
-        success: true,
-        output: `✅ 工具栏更新成功\n- 工具栏ID: toolbar_${Date.now()}\n- 新按钮: 3个\n- 移除按钮: 1个\n- 状态: 已刷新`
-      };
-      
-    case 'remove-toolbar':
-      return {
-        success: true,
-        output: `✅ 工具栏移除成功\n- 工具栏ID: toolbar_${Date.now()}\n- 移除按钮: 5个\n- 状态: 已清理\n- 内存释放: 2.1MB`
-      };
+    // Obsidian Editor PanelTree Tests
+    case 'obsidian-new-tab': {
+      try {
+        const { panelTree, initializePanelTree, addTabToPanel, activateTabInPanel } = useEditorService.getState() as any;
+        if (!panelTree) initializePanelTree();
+        const tree = (useEditorService.getState() as any).panelTree as any;
+        // find first leaf panel id
+        const findLeaf = (node: any): any => {
+          if (node.type === 'leaf') return node;
+          for (const child of node.children || []) {
+            const res = findLeaf(child);
+            if (res) return res;
+          }
+          return null;
+        };
+        const leaf = findLeaf(tree);
+        const tabId = `t-${Date.now()}`;
+        addTabToPanel(leaf.id, { id: tabId, title: `新标签页 ${tabId.slice(-3)}`, isActive: true });
+        activateTabInPanel(leaf.id, tabId);
+      } catch {}
+      return { success: true, output: '✅ Obsidian: 新建标签成功并已激活' };
+    }
+
+    case 'obsidian-split-horizontal': {
+      try {
+        const { panelTree, initializePanelTree, splitPanel } = useEditorService.getState() as any;
+        if (!panelTree) initializePanelTree();
+        const tree = (useEditorService.getState() as any).panelTree as any;
+        const findFirstLeafId = (node: any): string | null => {
+          if (node.type === 'leaf') return node.id;
+          for (const child of node.children || []) {
+            const res = findFirstLeafId(child);
+            if (res) return res;
+          }
+          return null;
+        };
+        const target = findFirstLeafId(tree) || 'left';
+        splitPanel(target, 'horizontal');
+      } catch {}
+      return { success: true, output: '✅ Obsidian: 水平分屏成功' };
+    }
+
+    case 'obsidian-split-vertical': {
+      try {
+        const { panelTree, initializePanelTree, splitPanel } = useEditorService.getState() as any;
+        if (!panelTree) initializePanelTree();
+        const tree = (useEditorService.getState() as any).panelTree as any;
+        const findFirstLeafId = (node: any): string | null => {
+          if (node.type === 'leaf') return node.id;
+          for (const child of node.children || []) {
+            const res = findFirstLeafId(child);
+            if (res) return res;
+          }
+          return null;
+        };
+        const target = findFirstLeafId(tree) || 'left';
+        splitPanel(target, 'vertical');
+      } catch {}
+      return { success: true, output: '✅ Obsidian: 垂直分屏成功' };
+    }
+
+    case 'obsidian-close-current': {
+      try {
+        const { panelTree, initializePanelTree, closeTabInPanel } = useEditorService.getState() as any;
+        if (!panelTree) initializePanelTree();
+        const tree = (useEditorService.getState() as any).panelTree as any;
+        // find active tab in first leaf
+        const findActive = (node: any): { panelId: string; tabId: string } | null => {
+          if (node.type === 'leaf' && node.tabs?.length) {
+            const active = node.tabs.find((t: any) => t.isActive) || node.tabs[0];
+            return { panelId: node.id, tabId: active.id };
+          }
+          for (const child of node.children || []) {
+            const res = findActive(child);
+            if (res) return res;
+          }
+          return null;
+        };
+        const target = findActive(tree);
+        if (target) closeTabInPanel(target.panelId, target.tabId);
+      } catch {}
+      return { success: true, output: '✅ Obsidian: 关闭当前标签' };
+    }
+
+    case 'obsidian-custom-tab': {
+      try {
+        const { panelTree, initializePanelTree, addTabToPanel, activateTabInPanel } = useEditorService.getState() as any;
+        if (!panelTree) initializePanelTree();
+        const tree = (useEditorService.getState() as any).panelTree as any;
+        const findLeaf = (node: any): any => {
+          if (node.type === 'leaf') return node;
+          for (const child of node.children || []) {
+            const res = findLeaf(child);
+            if (res) return res;
+          }
+          return null;
+        };
+        const leaf = findLeaf(tree);
+        const tabId = `custom-${Date.now()}`;
+        addTabToPanel(leaf.id, { id: tabId, title: `Custom ${tabId.slice(-3)}`, isActive: true });
+        activateTabInPanel(leaf.id, tabId);
+      } catch {}
+      return { success: true, output: '✅ Obsidian: 新建自定义标签成功' };
+    }
       
     // ActivityBar Tests
     case 'add-activity-bar-item': {
@@ -332,25 +418,15 @@ export const useTestService = create<TestServiceState>()(
         ]
       },
       {
-        id: 'editor-tree-tests',
-        name: 'Editor Tree Tests',
+        id: 'obsidian-editor-tests',
+        name: 'Obsidian Editor Tests',
         status: 'pending',
         tests: [
-          {
-            id: 'add-toolbar',
-            name: 'Add Toolbar',
-            status: 'pending'
-          },
-          {
-            id: 'update-toolbar',
-            name: 'Update Toolbar',
-            status: 'pending'
-          },
-          {
-            id: 'remove-toolbar',
-            name: 'Remove Toolbar',
-            status: 'pending'
-          }
+          { id: 'obsidian-new-tab', name: 'New Obsidian Tab', status: 'pending' },
+          { id: 'obsidian-split-horizontal', name: 'Split Horizontal', status: 'pending' },
+          { id: 'obsidian-split-vertical', name: 'Split Vertical', status: 'pending' },
+          { id: 'obsidian-close-current', name: 'Close Current Tab', status: 'pending' },
+          { id: 'obsidian-custom-tab', name: 'Custom Tab', status: 'pending' },
         ]
       },
       {

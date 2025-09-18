@@ -27,7 +27,7 @@
 
 ### 5. Monaco Editor 类型不匹配
 - **问题**: `EditorTab` 和 `IEditorTab` 类型不匹配
-- **解决方案**: 在 `editor-area.tsx` 中进行类型转换
+- **解决方案**: 在 `ObsidianEditor` 中进行类型转换
 
 ## 📊 构建结果
 
@@ -83,7 +83,7 @@
 - `packages/ui/tsup.config.ts`
 - `packages/core/src/types/index.ts`
 - `packages/ui/src/components/monaco-editor.tsx`
-- `packages/ui/src/components/editor-area.tsx`
+- `packages/ui/src/components/obeditor/ObsidianLayout.tsx`
 - `packages/ui/src/components/resizable-bottom-panel.tsx`
 - `packages/ui/src/components/test-pane.tsx`
 

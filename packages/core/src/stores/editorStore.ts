@@ -1,11 +1,13 @@
 import { create } from 'zustand';
 import { immer } from 'zustand/middleware/immer';
-import type { IEditorGroup, IEditorTab, UniqueId } from '../types';
+import type { IEditorGroup, IEditorTab, UniqueId, PanelNode, TabType } from '../types';
 
 interface EditorState {
   groups: IEditorGroup[];
   currentGroup: UniqueId | null;
   currentTab: UniqueId | null;
+  // Obsidian-style panel tree
+  panelTree: PanelNode | null;
   addGroup: (group: IEditorGroup) => void;
   removeGroup: (groupId: UniqueId) => void;
   setCurrentGroup: (groupId: UniqueId) => void;
@@ -19,6 +21,12 @@ interface EditorState {
   closeTabsToLeft: (groupId: UniqueId, tabId: UniqueId) => void;
   moveTab: (groupId: UniqueId, fromIndex: number, toIndex: number) => void;
   duplicateTab: (groupId: UniqueId, tabId: UniqueId) => void;
+  // Panel actions
+  initializePanelTree: (tree?: PanelNode) => void;
+  splitPanel: (panelId: string, direction: 'horizontal' | 'vertical') => void;
+  addTabToPanel: (panelId: string, tab: TabType) => void;
+  closeTabInPanel: (panelId: string, tabId: string) => void;
+  activateTabInPanel: (panelId: string, tabId: string) => void;
 }
 
 export const useEditorStore = create<EditorState>()(
@@ -26,6 +34,7 @@ export const useEditorStore = create<EditorState>()(
     groups: [],
     currentGroup: null,
     currentTab: null,
+    panelTree: null,
 
     addGroup: (group: IEditorGroup) =>
       set((state) => {
@@ -194,6 +203,103 @@ export const useEditorStore = create<EditorState>()(
             state.currentTab = newTab.id;
           }
         }
+      }),
+
+    // Obsidian-style panel tree actions
+    initializePanelTree: (tree) =>
+      set((state) => {
+        state.panelTree =
+          tree || {
+            id: 'root',
+            type: 'split',
+            direction: 'horizontal',
+            children: [
+              {
+                id: 'left',
+                type: 'leaf',
+                tabs: [
+                  { id: '1', title: '新标签页', isActive: true },
+                ],
+                size: 35,
+                minSize: 20,
+              },
+            ],
+          };
+      }),
+
+    splitPanel: (panelId, direction) =>
+      set((state) => {
+        const findPanel = (node: PanelNode): PanelNode | null => {
+          if (node.id === panelId) return node;
+          if (node.children) {
+            for (const child of node.children) {
+              const found = findPanel(child);
+              if (found) return found;
+            }
+          }
+          return null;
+        };
+        if (!state.panelTree) return;
+        const target = findPanel(state.panelTree);
+        if (target && target.type === 'leaf') {
+          const newLeafId = `${panelId}-split-${Date.now()}`;
+          const newLeaf: PanelNode = { id: newLeafId, type: 'leaf', tabs: [] };
+          target.type = 'split';
+          target.direction = direction;
+          target.children = [
+            { id: `${panelId}-a`, type: 'leaf', tabs: target.tabs || [] },
+            newLeaf,
+          ];
+          delete (target as any).tabs;
+        }
+      }),
+
+    addTabToPanel: (panelId, tab) =>
+      set((state) => {
+        const visit = (node: PanelNode): boolean => {
+          if (node.id === panelId && node.type === 'leaf') {
+            node.tabs = node.tabs || [];
+            node.tabs.forEach((t) => (t.isActive = false));
+            node.tabs.push({ ...tab, isActive: true });
+            return true;
+          }
+          if (node.children) return node.children.some(visit);
+          return false;
+        };
+        if (state.panelTree) visit(state.panelTree);
+      }),
+
+    closeTabInPanel: (panelId, tabId) =>
+      set((state) => {
+        const visit = (node: PanelNode): boolean => {
+          if (node.id === panelId && node.type === 'leaf' && node.tabs) {
+            const idx = node.tabs.findIndex((t) => t.id === tabId);
+            if (idx !== -1) {
+              const wasActive = !!node.tabs[idx].isActive;
+              node.tabs.splice(idx, 1);
+              if (wasActive && node.tabs.length > 0) {
+                node.tabs[node.tabs.length - 1].isActive = true;
+              }
+            }
+            return true;
+          }
+          if (node.children) return node.children.some(visit);
+          return false;
+        };
+        if (state.panelTree) visit(state.panelTree);
+      }),
+
+    activateTabInPanel: (panelId, tabId) =>
+      set((state) => {
+        const visit = (node: PanelNode): boolean => {
+          if (node.id === panelId && node.type === 'leaf' && node.tabs) {
+            node.tabs.forEach((t) => (t.isActive = t.id === tabId));
+            return true;
+          }
+          if (node.children) return node.children.some(visit);
+          return false;
+        };
+        if (state.panelTree) visit(state.panelTree);
       }),
   }))
 );

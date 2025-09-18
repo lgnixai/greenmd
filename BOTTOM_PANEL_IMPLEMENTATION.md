@@ -82,7 +82,7 @@ Workbench
 ├── MenuBar
 ├── ActivityBar
 ├── Sidebar (ResizablePanel)
-├── EditorArea
+├── ObsidianEditor
 ├── AuxiliaryPane (ResizablePanel)
 ├── Panel (ResizableBottomPanel) ← 新增
 └── StatusBar

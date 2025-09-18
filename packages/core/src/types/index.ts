@@ -132,6 +132,24 @@ export interface IEditorGroup {
   tabs: IEditorTab[];
 }
 
+// Obsidian-style editor types
+export interface TabType {
+  id: string;
+  title: string;
+  isActive?: boolean;
+  isLocked?: boolean;
+}
+
+export interface PanelNode {
+  id: string;
+  type: 'leaf' | 'split';
+  direction?: 'horizontal' | 'vertical';
+  tabs?: TabType[];
+  children?: PanelNode[];
+  size?: number;
+  minSize?: number;
+}
+
 // Layout types
 export interface ILayout {
   splitPanePos: number[];

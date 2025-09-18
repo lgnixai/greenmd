@@ -1,7 +1,14 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels';
-import { TabBar, type TabType } from '@/components/obeditor/Tab';
-import Editor from '@/components/obeditor/Editor';
+import { TabBar, type TabType } from './Tab';
+import Editor from './Editor';
+import WorkspaceManager from './WorkspaceManager';
+import { useDocuments } from '@/stores/documents';
+import { useTabManager } from '@/stores/tabManager';
+import { cn } from '@/lib/utils';
+import { FolderPlus, FilePlus, FileText, MoreHorizontal, Layout, Save } from 'lucide-react';
+import { useFileTree } from '@/stores/filetree';
+import useShortcuts from '@/hooks/useShortcuts';
 
 interface PanelNode {
   id: string;
@@ -13,7 +20,17 @@ interface PanelNode {
   minSize?: number;
 }
 
-export const   ObsidianEditor: React.FC = () => {
+interface FileNode {
+  id: string;
+  name: string;
+  type: 'file' | 'folder';
+  children?: FileNode[];
+}
+
+const ObsidianLayout: React.FC = () => {
+  const { createDocument, renameDocument } = useDocuments();
+  const { loadWorkspaceLayout } = useTabManager();
+  const [showWorkspaceManager, setShowWorkspaceManager] = useState(false);
   const [panelTree, setPanelTree] = useState<PanelNode>({
     id: 'root',
     type: 'split',
@@ -24,36 +41,46 @@ export const   ObsidianEditor: React.FC = () => {
         type: 'leaf',
         tabs: [
           { id: '1', title: '新标签页', isActive: true },
-          // { id: '2', title: '新标签页', isActive: false },
-          // { id: '3', title: '新标签页', isActive: false }
+          
         ],
         size: 35,
         minSize: 20
       },
-      // {
-      //   id: 'right-group',
-      //   type: 'split',
-      //   direction: 'vertical',
-      //   size: 65,
-      //   children: [
-      //     {
-      //       id: 'topRight',
-      //       type: 'leaf',
-      //       tabs: [{ id: '4', title: '新标签页', isActive: true }],
-      //       size: 60,
-      //       minSize: 20
-      //     },
-      //     {
-      //       id: 'bottomRight',
-      //       type: 'leaf',
-      //       tabs: [{ id: '5', title: '新标签页', isActive: true }],
-      //       size: 40,
-      //       minSize: 20
-      //     }
-      //   ]
-      // }
+       
     ]
   });
+
+  const { rootId, listChildren, createFile, createFolder, nodesById } = useFileTree();
+  const [lastActivePanelId, setLastActivePanelId] = useState<string>('left');
+
+  // Workspace management handlers
+  const handleLoadWorkspaceLayout = useCallback((layout: any) => {
+    setPanelTree(layout.panelTree);
+    setShowWorkspaceManager(false);
+  }, []);
+
+  // Global shortcuts
+  useShortcuts({
+    onSaveWorkspace: () => setShowWorkspaceManager(true),
+  });
+
+  // 初始化为每个初始标签创建文档
+  useEffect(() => {
+    const attachDocs = (node: PanelNode) => {
+      if (node.type === 'leaf' && node.tabs) {
+        node.tabs = node.tabs.map(t => ({
+          ...t,
+          documentId: t.documentId ?? createDocument(t.title, { content: '', language: 'markdown' })
+        }));
+      }
+      if (node.children) node.children.forEach(attachDocs);
+    };
+    setPanelTree(prev => {
+      const clone = JSON.parse(JSON.stringify(prev)) as PanelNode;
+      attachDocs(clone);
+      return clone;
+    });
+  }, [createDocument]);
 
   const findPanelById = useCallback((tree: PanelNode, id: string): PanelNode | null => {
     if (tree.id === id) return tree;
@@ -81,6 +108,45 @@ export const   ObsidianEditor: React.FC = () => {
     });
   }, []);
 
+  // 历史栈：记录每个叶子面板的激活序列
+  const [historyByPanelId, setHistoryByPanelId] = useState<Record<string, { stack: string[]; index: number }>>({});
+  const pushHistory = useCallback((panelId: string, tabId: string) => {
+    setHistoryByPanelId(prev => {
+      const h = prev[panelId] ?? { stack: [], index: -1 };
+      const newStack = h.stack.slice(0, h.index + 1);
+      if (newStack[newStack.length - 1] !== tabId) newStack.push(tabId);
+      return { ...prev, [panelId]: { stack: newStack, index: newStack.length - 1 } };
+    });
+  }, []);
+  const goBack = useCallback((panelId: string) => {
+    setHistoryByPanelId(prev => {
+      const h = prev[panelId];
+      if (!h || h.index <= 0) return prev;
+      const next = { ...prev, [panelId]: { ...h, index: h.index - 1 } };
+      const targetTabId = next[panelId].stack[next[panelId].index];
+      const panel = findPanelById(panelTree, panelId);
+      if (panel?.tabs) {
+        const newTabs = panel.tabs.map(t => ({ ...t, isActive: t.id === targetTabId }));
+        updatePanelTabs(panelId, newTabs);
+      }
+      return next;
+    });
+  }, [findPanelById, panelTree, updatePanelTabs]);
+  const goForward = useCallback((panelId: string) => {
+    setHistoryByPanelId(prev => {
+      const h = prev[panelId];
+      if (!h || h.index >= h.stack.length - 1) return prev;
+      const next = { ...prev, [panelId]: { ...h, index: h.index + 1 } };
+      const targetTabId = next[panelId].stack[next[panelId].index];
+      const panel = findPanelById(panelTree, panelId);
+      if (panel?.tabs) {
+        const newTabs = panel.tabs.map(t => ({ ...t, isActive: t.id === targetTabId }));
+        updatePanelTabs(panelId, newTabs);
+      }
+      return next;
+    });
+  }, [findPanelById, panelTree, updatePanelTabs]);
+
   const handleToggleLock = useCallback((panelId: string) => (id: string) => {
     const panel = findPanelById(panelTree, panelId);
     if (!panel?.tabs) return;
@@ -97,24 +163,34 @@ export const   ObsidianEditor: React.FC = () => {
 
     const targetTab = panel.tabs.find(tab => tab.id === id);
     if (targetTab) {
+      // 如果有documentId，创建新文档副本
+      const newDocumentId = targetTab.documentId 
+        ? createDocument(`${targetTab.title} - 副本`, { content: '', language: 'markdown' })
+        : undefined;
+      
       const newTab = {
         ...targetTab,
         id: Date.now().toString(),
         title: `${targetTab.title} - 副本`,
-        isActive: false
+        isActive: false,
+        documentId: newDocumentId
       };
       const newTabs = [...panel.tabs, newTab];
       updatePanelTabs(panelId, newTabs);
     }
-  }, [panelTree, findPanelById, updatePanelTabs]);
+  }, [panelTree, findPanelById, updatePanelTabs, createDocument]);
 
   const handleRename = useCallback((panelId: string) => (id: string, newTitle: string) => {
     const panel = findPanelById(panelTree, panelId);
     if (!panel?.tabs) return;
 
-    const newTabs = panel.tabs.map(tab => 
-      tab.id === id ? { ...tab, title: newTitle } : tab
-    );
+    const newTabs = panel.tabs.map(tab => {
+      if (tab.id === id) {
+        if (tab.documentId) renameDocument(tab.documentId, newTitle);
+        return { ...tab, title: newTitle };
+      }
+      return tab;
+    });
     updatePanelTabs(panelId, newTabs);
   }, [panelTree, findPanelById, updatePanelTabs]);
 
@@ -123,10 +199,60 @@ export const   ObsidianEditor: React.FC = () => {
     if (!panel?.tabs) return;
 
     const targetTab = panel.tabs.find(tab => tab.id === id);
-    if (targetTab?.filePath) {
-      navigator.clipboard.writeText(targetTab.filePath);
+    if (targetTab) {
+      const pathToCopy = targetTab.filePath || `/${targetTab.title}`;
+      navigator.clipboard.writeText(pathToCopy).then(() => {
+        // 可以添加一个toast通知
+        console.log('路径已复制到剪贴板:', pathToCopy);
+      }).catch(err => {
+        console.error('复制路径失败:', err);
+        // 降级方案：显示路径
+        alert(`文件路径: ${pathToCopy}`);
+      });
     }
   }, [panelTree, findPanelById]);
+
+  const findFirstLeafPanelId = useCallback((tree: PanelNode): string | null => {
+    if (tree.type === 'leaf' && tree.tabs) return tree.id;
+    if (tree.children) {
+      for (const child of tree.children) {
+        const result = findFirstLeafPanelId(child);
+        if (result) return result;
+      }
+    }
+    return null;
+  }, []);
+
+  const openDocumentInTargetPanel = useCallback((docId: string, title: string, filePath?: string) => {
+    setPanelTree(prev => {
+      const getTargetPanelId = (): string => {
+        const p = findPanelById(prev, lastActivePanelId);
+        if (p && p.type === 'leaf' && p.tabs) return lastActivePanelId;
+        return findFirstLeafPanelId(prev) ?? 'left';
+      };
+      const targetId = getTargetPanelId();
+      const targetPanel = findPanelById(prev, targetId);
+      if (!targetPanel || targetPanel.type !== 'leaf' || !targetPanel.tabs) return prev;
+      const newTab: TabType = {
+        id: Date.now().toString(),
+        title,
+        isActive: true,
+        documentId: docId,
+        filePath
+      };
+      const newTabs = targetPanel.tabs.map(t => ({ ...t, isActive: false }));
+      newTabs.push(newTab);
+      const updateNode = (node: PanelNode): PanelNode => {
+        if (node.id === targetId && node.type === 'leaf') {
+          return { ...node, tabs: newTabs };
+        }
+        if (node.children) return { ...node, children: node.children.map(updateNode) };
+        return node;
+      };
+      setLastActivePanelId(targetId);
+      return updateNode(prev);
+    });
+  }, [findPanelById, findFirstLeafPanelId, lastActivePanelId]);
 
   const handleRevealInExplorer = useCallback((panelId: string) => (id: string) => {
     // 在网页环境中，我们可以显示文件路径或其他相关信息
@@ -135,7 +261,15 @@ export const   ObsidianEditor: React.FC = () => {
 
     const targetTab = panel.tabs.find(tab => tab.id === id);
     if (targetTab) {
-      alert(`文件位置: ${targetTab.filePath || '新文件'}`);
+      const filePath = targetTab.filePath || `/${targetTab.title}`;
+      // 在Web环境中，我们可以尝试打开文件管理器或显示信息
+      if (targetTab.filePath) {
+        // 如果有真实文件路径，尝试在新标签页中打开
+        window.open(`file://${targetTab.filePath}`, '_blank');
+      } else {
+        // 否则显示文件信息
+        alert(`文件信息:\n标题: ${targetTab.title}\n位置: ${filePath}\n类型: ${targetTab.documentId ? '文档' : '新文件'}`);
+      }
     }
   }, [panelTree, findPanelById]);
 
@@ -147,7 +281,7 @@ export const   ObsidianEditor: React.FC = () => {
           const activeTab = node.tabs?.find(tab => tab.isActive);
           const newTab = activeTab 
             ? { ...activeTab, id: Date.now().toString(), isActive: true }
-            : { id: Date.now().toString(), title: '新标签页', isActive: true };
+            : { id: Date.now().toString(), title: '新标签页', isActive: true, documentId: createDocument('新标签页') };
 
           // 创建新的分割面板
           return {
@@ -181,7 +315,7 @@ export const   ObsidianEditor: React.FC = () => {
       };
       return splitNode(prevTree);
     });
-  }, []);
+  }, [createDocument]);
 
   const removePanelNode = useCallback((panelId: string) => {
     setPanelTree(prevTree => {
@@ -248,20 +382,24 @@ export const   ObsidianEditor: React.FC = () => {
 
     const newTabs = panel.tabs.map(tab => ({ ...tab, isActive: tab.id === id }));
     updatePanelTabs(panelId, newTabs);
+    pushHistory(panelId, id);
+    setLastActivePanelId(panelId);
   }, [panelTree, findPanelById, updatePanelTabs]);
 
   const handleAddTab = useCallback((panelId: string) => () => {
     const panel = findPanelById(panelTree, panelId);
     if (!panel?.tabs) return;
 
+    const documentId = createDocument('新标签页', { content: '', language: 'markdown' });
     const newTab = {
       id: Date.now().toString(),
       title: '新标签页',
-      isActive: false
-    };
+      isActive: false,
+      documentId
+    } as TabType;
     const newTabs = [...panel.tabs, newTab];
     updatePanelTabs(panelId, newTabs);
-  }, [panelTree, findPanelById, updatePanelTabs]);
+  }, [panelTree, findPanelById, updatePanelTabs, createDocument]);
 
   const handleCloseOthers = useCallback((panelId: string) => (id: string) => {
     const panel = findPanelById(panelTree, panelId);
@@ -278,11 +416,11 @@ export const   ObsidianEditor: React.FC = () => {
     updatePanelTabs(panelId, [newTab]);
   }, [updatePanelTabs]);
 
-  const handleSplitHorizontal = useCallback((panelId: string) => (_id: string) => {
+  const handleSplitHorizontal = useCallback((panelId: string) => (id: string) => {
     splitPanel(panelId, 'horizontal');
   }, [splitPanel]);
 
-  const handleSplitVertical = useCallback((panelId: string) => (_id: string) => {
+  const handleSplitVertical = useCallback((panelId: string) => (id: string) => {
     splitPanel(panelId, 'vertical');
   }, [splitPanel]);
 
@@ -304,8 +442,18 @@ export const   ObsidianEditor: React.FC = () => {
             onRename={handleRename(node.id)}
             onCopyPath={handleCopyPath(node.id)}
             onRevealInExplorer={handleRevealInExplorer(node.id)}
+            onReorderTabs={(newTabs) => updatePanelTabs(node.id, newTabs)}
+            onBack={() => goBack(node.id)}
+            onForward={() => goForward(node.id)}
+            panelId={node.id}
           />
-          <Editor />
+          <div className="flex flex-1 min-h-0">
+            <div className="flex flex-1 min-w-0">
+              <div className="flex-1">
+                <Editor documentId={node.tabs.find(t => t.isActive)?.documentId} />
+              </div>
+            </div>
+          </div>
         </div>
       );
     }
@@ -353,9 +501,49 @@ export const   ObsidianEditor: React.FC = () => {
   ]);
 
   return (
-    <div className="h-screen flex flex-col bg-background">
-      {renderPanelNode(panelTree)}
+    <div className="h-full w-full flex flex-col bg-background">
+      {/* Top toolbar */}
+      <div className="flex items-center justify-between px-4 py-2 bg-panel border-b border-border">
+        <div className="flex items-center gap-2">
+          <span className="text-sm font-medium text-foreground">Obsidian Clone</span>
+        </div>
+        
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setShowWorkspaceManager(true)}
+            className="p-1 hover:bg-nav-hover rounded"
+            title="工作区管理 (Ctrl+Shift+S)"
+          >
+            <Layout className="w-4 h-4 text-muted-foreground" />
+          </button>
+          
+          <button
+            onClick={() => setShowWorkspaceManager(true)}
+            className="p-1 hover:bg-nav-hover rounded"
+            title="保存工作区"
+          >
+            <Save className="w-4 h-4 text-muted-foreground" />
+          </button>
+        </div>
+      </div>
+      
+      {/* Main content */}
+      <div className="flex-1 flex min-h-0">
+        
+        <div className="flex-1 min-w-0">
+          {renderPanelNode(panelTree)}
+        </div>
+      </div>
+      
+      {/* Workspace Manager */}
+      <WorkspaceManager
+        isOpen={showWorkspaceManager}
+        onClose={() => setShowWorkspaceManager(false)}
+        currentPanelTree={panelTree}
+        onLoadLayout={handleLoadWorkspaceLayout}
+      />
     </div>
   );
 };
 
+export default ObsidianLayout;

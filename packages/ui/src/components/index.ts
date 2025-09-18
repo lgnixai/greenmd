@@ -9,7 +9,7 @@ export { Workbench } from './workbench';
 export { ActivityBar } from './activity-bar';
 export { Sidebar } from './sidebar';
 export { Explorer } from './explorer';
-export { EditorArea } from './editor-area';
+export { ObsidianEditor } from './obeditor';
 export { Panel } from './panel';
 export { StatusBar } from './status-bar';
 export { MenuBar } from './menu-bar';

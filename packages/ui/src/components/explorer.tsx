@@ -4,7 +4,6 @@ import { Button } from "@/components/button";
 import { ChevronRight, ChevronDown, File, Folder, FolderOpen } from 'lucide-react';
 import type { IFileTreeNode } from '@dtinsight/molecule-core';
 import { ContextMenu } from "@/components/context-menu";
-import { EditorTree } from "@/components/editor-tree";
 import { useEditorService } from '@dtinsight/molecule-core';
 
 export interface ExplorerProps {
@@ -200,12 +199,20 @@ export const Explorer: React.FC<ExplorerProps> = ({ className }) => {
     return `// ${name}`;
   };
 
-  const handleSelect = (nodeId: string) => {
+  const handleSelect = async (nodeId: string) => {
     setSelectedNode(nodeId);
     const node = findNodeById(mockData, nodeId);
     if (node && node.fileType === 'File') {
       const lang = guessLanguage(node.name);
-      const content = defaultContentFor(node.name);
+      let content = defaultContentFor(node.name);
+      try {
+        if (node.name === 'package.json') {
+          const res = await fetch('/package.json');
+          if (res.ok) {
+            content = await res.text();
+          }
+        }
+      } catch {}
       openFile(node.name, content, lang);
     }
   };
@@ -263,11 +270,6 @@ export const Explorer: React.FC<ExplorerProps> = ({ className }) => {
           />
         ))}
 
-        {/* 打开编辑器树 */}
-        <div className="mt-4 border-t pt-2">
-          <div className="text-xs text-muted-foreground mb-1">打开的编辑器</div>
-          <EditorTree />
-        </div>
       </div>
       {menuPos && (
         <ContextMenu items={menuItems} onClose={closeMenu} position={menuPos} />)

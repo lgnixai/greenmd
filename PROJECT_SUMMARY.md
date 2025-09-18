@@ -107,7 +107,7 @@ export const Workbench: React.FC<WorkbenchProps> = ({ className }) => {
     <div className={cn("flex h-screen w-screen", className)}>
       {!layout.activityBar.hidden && <ActivityBar />}
       {!layout.sidebar.hidden && <Sidebar />}
-      <EditorArea />
+      <ObsidianEditor />
       {!layout.panel.hidden && <Panel />}
       {!layout.statusBar.hidden && <StatusBar />}
     </div>

@@ -70,8 +70,14 @@
     "monaco-editor": "^0.53.0",
     "react-resizable-panels": "^3.0.6",
     "tailwind-merge": "^2.0.0",
+<<<<<<< Current (Your changes)
+    "tailwindcss-animate": "^1.0.7",  
+     "zustand": "^4.4.7",
+=======
     "tailwindcss-animate": "^1.0.7",
-    "zustand": "^4.4.7"
+    "zustand": "^4.4.7",
+>>>>>>> Incoming (Background Agent changes)
+    "immer": "^10.0.3"
   },
   "devDependencies": {
     "@types/react": "^18.2.45",

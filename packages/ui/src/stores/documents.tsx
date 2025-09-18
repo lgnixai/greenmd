@@ -1,5 +1,4 @@
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
 import { immer } from 'zustand/middleware/immer';
 
 export interface DocumentData {
@@ -15,9 +14,6 @@ export interface DocumentData {
 
 interface DocumentsState {
   documentsById: Record<string, DocumentData>;
-}
-
-interface DocumentsActions {
   createDocument: (name: string, options?: { content?: string; language?: string; path?: string }) => string;
   updateDocumentContent: (id: string, content: string) => void;
   renameDocument: (id: string, name: string) => void;
@@ -26,84 +22,95 @@ interface DocumentsActions {
   getDocument: (id?: string) => DocumentData | undefined;
 }
 
-export type DocumentsStore = DocumentsState & DocumentsActions;
+const STORAGE_KEY = 'obsidian.clone.documents';
 
-export const useDocuments = create<DocumentsStore>()(
-  persist(
-    immer((set, get) => ({
-      documentsById: {},
+const loadInitialDocuments = (): Record<string, DocumentData> => {
+  if (typeof window === 'undefined') return {};
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    return raw ? (JSON.parse(raw) as Record<string, DocumentData>) : {};
+  } catch {
+    return {};
+  }
+};
 
-      createDocument: (name: string, options?: { content?: string; language?: string; path?: string }) => {
-        const id = Date.now().toString() + Math.random().toString(36).slice(2);
-        const now = Date.now();
-        const doc: DocumentData = {
-          id,
-          name,
-          content: options?.content ?? '',
-          language: options?.language ?? 'markdown',
-          path: options?.path,
-          createdAt: now,
-          updatedAt: now,
-          isDirty: Boolean(options?.content && options?.content.length > 0)
-        };
+export const useDocuments = create<DocumentsState>()(
+  immer((set: (fn: (state: DocumentsState) => void) => void, get: () => DocumentsState) => ({
+    documentsById: loadInitialDocuments(),
 
-        set((state) => {
-          state.documentsById[id] = doc;
-        });
+    createDocument: (name: string, options?: { content?: string; language?: string; path?: string }) => {
+      const id = Date.now().toString() + Math.random().toString(36).slice(2);
+      const now = Date.now();
+      const doc: DocumentData = {
+        id,
+        name,
+        content: options?.content ?? '',
+        language: options?.language ?? 'markdown',
+        path: options?.path,
+        createdAt: now,
+        updatedAt: now,
+        isDirty: Boolean(options?.content && options?.content.length > 0)
+      };
+      set((state) => {
+        state.documentsById[id] = doc;
+      });
+      return id;
+    },
 
-        return id;
-      },
+    updateDocumentContent: (id: string, content: string) => {
+      set((state: DocumentsState) => {
+        const existing = state.documentsById[id];
+        if (!existing) return;
+        existing.content = content;
+        existing.updatedAt = Date.now();
+        existing.isDirty = true;
+      });
+    },
 
-      updateDocumentContent: (id: string, content: string) => {
-        set((state) => {
-          const existing = state.documentsById[id];
-          if (existing) {
-            existing.content = content;
-            existing.updatedAt = Date.now();
-            existing.isDirty = true;
-          }
-        });
-      },
+    renameDocument: (id: string, name: string) => {
+      set((state: DocumentsState) => {
+        const existing = state.documentsById[id];
+        if (!existing) return;
+        existing.name = name;
+        existing.updatedAt = Date.now();
+      });
+    },
 
-      renameDocument: (id: string, name: string) => {
-        set((state) => {
-          const existing = state.documentsById[id];
-          if (existing) {
-            existing.name = name;
-            existing.updatedAt = Date.now();
-          }
-        });
-      },
+    setDocumentLanguage: (id: string, language: string) => {
+      set((state: DocumentsState) => {
+        const existing = state.documentsById[id];
+        if (!existing) return;
+        existing.language = language;
+        existing.updatedAt = Date.now();
+      });
+    },
 
-      setDocumentLanguage: (id: string, language: string) => {
-        set((state) => {
-          const existing = state.documentsById[id];
-          if (existing) {
-            existing.language = language;
-            existing.updatedAt = Date.now();
-          }
-        });
-      },
+    setDocumentPath: (id: string, path: string) => {
+      set((state: DocumentsState) => {
+        const existing = state.documentsById[id];
+        if (!existing) return;
+        existing.path = path;
+        existing.updatedAt = Date.now();
+      });
+    },
 
-      setDocumentPath: (id: string, path: string) => {
-        set((state) => {
-          const existing = state.documentsById[id];
-          if (existing) {
-            existing.path = path;
-            existing.updatedAt = Date.now();
-          }
-        });
-      },
-
-      getDocument: (id?: string) => {
-        if (!id) return undefined;
-        return get().documentsById[id];
-      },
-    })),
-    {
-      name: 'greenmd-documents',
-      version: 1,
+    getDocument: (id?: string) => {
+      if (!id) return undefined;
+      return get().documentsById[id];
     }
-  )
+  }))
 );
+
+// Persistence: debounce save
+if (typeof window !== 'undefined') {
+  let timer: number | null = null;
+  useDocuments.subscribe((state: DocumentsState) => {
+    if (timer) window.clearTimeout(timer);
+    timer = window.setTimeout(() => {
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(state.documentsById));
+      } catch {}
+    }, 500);
+  });
+}
 

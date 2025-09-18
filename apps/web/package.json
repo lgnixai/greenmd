@@ -12,10 +12,15 @@
     "lint": "eslint src --ext .ts,.tsx"
   },
   "dependencies": {
+     
     "@lginxai/greenmd-core": "workspace:*",
     "@lginxai/greenmd-ui": "workspace:*",
+ 
     "react": "^18.2.0",
-    "react-dom": "^18.2.0"
+   
+ 
+    "clsx": "^2.1.1",
+    "tailwind-merge": "^2.2.2"
   },
   "devDependencies": {
     "@types/react": "^18.2.45",

@@ -32,8 +32,10 @@ function App() {
 
   return (
     <MoleculeProvider config={config}>
-      <Workbench />
-      <CommandPalette />
+      <Workbench className="">
+        <div />
+      </Workbench>
+      <CommandPalette className="" />
     </MoleculeProvider>
   );
 }

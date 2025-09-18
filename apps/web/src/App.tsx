@@ -1,7 +1,7 @@
 import { MoleculeProvider, Workbench, CommandPalette } from '@dtinsight/molecule-ui';
 import { useEffect } from 'react';
 import { useCommandService } from '@dtinsight/molecule-core-legacy';
-import type { IMoleculeConfig } from '@dtinsight/molecule-types';
+import type { IMoleculeConfig } from '@dtinsight/molecule-core';
 import './index.css';
 
 const config: IMoleculeConfig = {

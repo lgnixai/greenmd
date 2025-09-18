@@ -1,4 +1,6 @@
-import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
+import { create } from 'zustand';
+import { persist } from 'zustand/middleware';
+import { immer } from 'zustand/middleware/immer';
 
 export interface FileNodeData {
   id: string;
@@ -11,146 +13,155 @@ export interface FileNodeData {
   updatedAt: number;
 }
 
-interface FileTreeContextValue {
+interface FileTreeState {
   nodesById: Record<string, FileNodeData>;
   rootId: string;
+}
+
+interface FileTreeActions {
   createFolder: (parentId: string, name?: string) => string;
   createFile: (parentId: string, name?: string, documentId?: string) => string;
   renameNode: (id: string, name: string) => void;
   deleteNode: (id: string) => void;
   listChildren: (id: string) => FileNodeData[];
+  initializeRoot: () => void;
 }
 
-const FileTreeContext = createContext<FileTreeContextValue | null>(null);
+export type FileTreeStore = FileTreeState & FileTreeActions;
 
-const STORAGE_KEY = 'obsidian.clone.filetree';
+export const useFileTree = create<FileTreeStore>()(
+  persist(
+    immer((set, get) => ({
+      nodesById: {},
+      rootId: '',
 
-export const FileTreeProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [nodesById, setNodesById] = useState<Record<string, FileNodeData>>({});
-  const [rootId, setRootId] = useState<string>('');
-  const timer = useRef<number | null>(null);
-
-  // Load
-  useEffect(() => {
-    try {
-      const raw = localStorage.getItem(STORAGE_KEY);
-      if (raw) {
-        const parsed = JSON.parse(raw) as { rootId: string; nodesById: Record<string, FileNodeData> };
-        setRootId(parsed.rootId);
-        setNodesById(parsed.nodesById);
-        return;
-      }
-    } catch {}
-    // initialize
-    const id = 'root-' + Date.now().toString(36);
-    const now = Date.now();
-    const root: FileNodeData = { id, name: 'Vault', type: 'folder', children: [], createdAt: now, updatedAt: now };
-    setRootId(id);
-    setNodesById({ [id]: root });
-  }, []);
-
-  // Persist
-  useEffect(() => {
-    if (!rootId) return;
-    if (timer.current) window.clearTimeout(timer.current);
-    timer.current = window.setTimeout(() => {
-      try {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify({ rootId, nodesById }));
-      } catch {}
-    }, 400);
-    return () => {
-      if (timer.current) window.clearTimeout(timer.current);
-    };
-  }, [rootId, nodesById]);
-
-  const createFolder = useCallback((parentId: string, name?: string) => {
-    const id = 'fld-' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
-    const now = Date.now();
-    setNodesById(prev => {
-      const parent = prev[parentId];
-      if (!parent || parent.type !== 'folder') return prev;
-      const node: FileNodeData = { id, name: name ?? '新建文件夹', type: 'folder', parentId, children: [], createdAt: now, updatedAt: now };
-      return {
-        ...prev,
-        [id]: node,
-        [parentId]: { ...parent, children: [...(parent.children ?? []), id], updatedAt: now }
-      };
-    });
-    return id;
-  }, []);
-
-  const createFile = useCallback((parentId: string, name?: string, documentId?: string) => {
-    const id = 'fil-' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
-    const now = Date.now();
-    setNodesById(prev => {
-      const parent = prev[parentId];
-      if (!parent || parent.type !== 'folder') return prev;
-      const node: FileNodeData = { id, name: name ?? '未命名.md', type: 'file', parentId, documentId, createdAt: now, updatedAt: now };
-      return {
-        ...prev,
-        [id]: node,
-        [parentId]: { ...parent, children: [...(parent.children ?? []), id], updatedAt: now }
-      };
-    });
-    return id;
-  }, []);
-
-  const renameNode = useCallback((id: string, name: string) => {
-    setNodesById(prev => {
-      const node = prev[id];
-      if (!node) return prev;
-      return { ...prev, [id]: { ...node, name, updatedAt: Date.now() } };
-    });
-  }, []);
-
-  const deleteNode = useCallback((id: string) => {
-    setNodesById(prev => {
-      const node = prev[id];
-      if (!node) return prev;
-      const next = { ...prev } as Record<string, FileNodeData>;
-      const removeRecursively = (nid: string) => {
-        const n = next[nid];
-        if (!n) return;
-        if (n.type === 'folder') {
-          (n.children ?? []).forEach(removeRecursively);
+      initializeRoot: () => {
+        const state = get();
+        if (state.rootId && state.nodesById[state.rootId]) {
+          return; // Already initialized
         }
-        delete next[nid];
-      };
-      removeRecursively(id);
-      if (node.parentId && next[node.parentId]) {
-        const parent = next[node.parentId];
-        next[node.parentId] = { ...parent, children: (parent.children ?? []).filter(cid => cid !== id), updatedAt: Date.now() };
-      }
-      return next;
-    });
-  }, []);
+        
+        const id = 'root-' + Date.now().toString(36);
+        const now = Date.now();
+        const root: FileNodeData = { 
+          id, 
+          name: 'Vault', 
+          type: 'folder', 
+          children: [], 
+          createdAt: now, 
+          updatedAt: now 
+        };
+        
+        set((state) => {
+          state.rootId = id;
+          state.nodesById[id] = root;
+        });
+      },
 
-  const listChildren = useCallback((id: string) => {
-    const node = nodesById[id];
-    if (!node || node.type !== 'folder') return [];
-    return (node.children ?? []).map(cid => nodesById[cid]).filter(Boolean) as FileNodeData[];
-  }, [nodesById]);
+      createFolder: (parentId: string, name?: string) => {
+        const id = 'fld-' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+        const now = Date.now();
+        
+        set((state) => {
+          const parent = state.nodesById[parentId];
+          if (!parent || parent.type !== 'folder') return;
+          
+          const node: FileNodeData = { 
+            id, 
+            name: name ?? '新建文件夹', 
+            type: 'folder', 
+            parentId, 
+            children: [], 
+            createdAt: now, 
+            updatedAt: now 
+          };
+          
+          state.nodesById[id] = node;
+          parent.children = [...(parent.children ?? []), id];
+          parent.updatedAt = now;
+        });
+        
+        return id;
+      },
 
-  const value = useMemo<FileTreeContextValue>(() => ({
-    nodesById,
-    rootId,
-    createFolder,
-    createFile,
-    renameNode,
-    deleteNode,
-    listChildren
-  }), [nodesById, rootId, createFolder, createFile, renameNode, deleteNode, listChildren]);
+      createFile: (parentId: string, name?: string, documentId?: string) => {
+        const id = 'fil-' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+        const now = Date.now();
+        
+        set((state) => {
+          const parent = state.nodesById[parentId];
+          if (!parent || parent.type !== 'folder') return;
+          
+          const node: FileNodeData = { 
+            id, 
+            name: name ?? '未命名.md', 
+            type: 'file', 
+            parentId, 
+            documentId, 
+            createdAt: now, 
+            updatedAt: now 
+          };
+          
+          state.nodesById[id] = node;
+          parent.children = [...(parent.children ?? []), id];
+          parent.updatedAt = now;
+        });
+        
+        return id;
+      },
 
-  return (
-    <FileTreeContext.Provider value={value}>
-      {children}
-    </FileTreeContext.Provider>
-  );
-};
+      renameNode: (id: string, name: string) => {
+        set((state) => {
+          const node = state.nodesById[id];
+          if (node) {
+            node.name = name;
+            node.updatedAt = Date.now();
+          }
+        });
+      },
 
-export const useFileTree = (): FileTreeContextValue => {
-  const ctx = useContext(FileTreeContext);
-  if (!ctx) throw new Error('useFileTree must be used within FileTreeProvider');
-  return ctx;
-};
+      deleteNode: (id: string) => {
+        set((state) => {
+          const node = state.nodesById[id];
+          if (!node) return;
+          
+          const removeRecursively = (nid: string) => {
+            const n = state.nodesById[nid];
+            if (!n) return;
+            if (n.type === 'folder') {
+              (n.children ?? []).forEach(removeRecursively);
+            }
+            delete state.nodesById[nid];
+          };
+          
+          removeRecursively(id);
+          
+          if (node.parentId && state.nodesById[node.parentId]) {
+            const parent = state.nodesById[node.parentId];
+            parent.children = (parent.children ?? []).filter(cid => cid !== id);
+            parent.updatedAt = Date.now();
+          }
+        });
+      },
+
+      listChildren: (id: string) => {
+        const state = get();
+        const node = state.nodesById[id];
+        if (!node || node.type !== 'folder') return [];
+        return (node.children ?? [])
+          .map(cid => state.nodesById[cid])
+          .filter(Boolean) as FileNodeData[];
+      },
+    })),
+    {
+      name: 'greenmd-filetree',
+      version: 1,
+      onRehydrateStorage: () => (state) => {
+        if (state && (!state.rootId || !state.nodesById[state.rootId])) {
+          state.initializeRoot();
+        }
+      },
+    }
+  )
+);
 

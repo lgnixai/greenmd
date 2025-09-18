@@ -1,5 +1,5 @@
 import React from 'react';
-import { useCommandService } from '@dtinsight/molecule-core';
+import { useCommandService } from '@lginxai/greenmd-core-legacy';
 import { cn } from "@/lib/utils";
 
 export interface CommandPaletteProps { className?: string }

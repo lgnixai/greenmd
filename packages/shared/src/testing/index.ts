@@ -6,7 +6,7 @@ import type {
   IService, 
   IConfiguration,
   Disposable 
-} from '@dtinsight/molecule-types';
+} from '@lginxai/greenmd-types';
 
 // 模拟事件发射器
 export class MockEventEmitter<T = any> implements IEventEmitter<T> {
@@ -216,7 +216,7 @@ export class TestUtils {
         reject(new Error(`Event '${event}' not emitted within ${timeout}ms`));
       }, timeout);
 
-      const disposable = emitter.on(event, (data) => {
+      const disposable = emitter.on(event, (data: any) => {
         clearTimeout(timer);
         disposable.dispose();
         resolve(data);

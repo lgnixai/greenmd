@@ -21,13 +21,14 @@
     "baseUrl": ".",
     "paths": {
       "@/*": ["./src/*"],
-      "@dtinsight/molecule-core": ["./packages/core/src"],
-      "@dtinsight/molecule-ui": ["./packages/ui/src"],
-      "@dtinsight/molecule-editor": ["./packages/editor/src"],
-      "@dtinsight/molecule-extensions": ["./packages/extensions/src"],
-      "@dtinsight/molecule-themes": ["./packages/themes/src"],
-      "@dtinsight/molecule-types": ["./packages/types/src"],
-      "@dtinsight/molecule-shared": ["./packages/shared/src"]
+      "@lginxai/greenmd-core": ["./packages/core/src"],
+      "@lginxai/greenmd-ui": ["./packages/ui/src"],
+      "@lginxai/greenmd-editor": ["./packages/editor/src"],
+      "@lginxai/greenmd-extensions": ["./packages/extensions/src"],
+      "@lginxai/greenmd-themes": ["./packages/themes/src"],
+      "@lginxai/greenmd-types": ["./packages/types/src"],
+      "@lginxai/greenmd-shared": ["./packages/shared/src"],
+      "@lginxai/greenmd-core-legacy": ["./packages/core-legacy/src"]
     }
   },
   "include": [
